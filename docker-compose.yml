@@ -16,11 +16,15 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       CLUSTER_ID: 'bcsjdhabnmcdbcmnsabmnbasajkn'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
 
   cassandra:
     image: cassandra:latest
     ports:
       - "9042:9042"
+    volumes:
+      - cassandra_data:/var/lib/cassandra
   
   postgres:
     image: postgres:latest
@@ -30,3 +34,15 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password
       POSTGRES_DB: testdb
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d testdb" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  kafka_data:
+  cassandra_data:
+  postgres_data:
