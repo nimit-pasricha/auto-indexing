@@ -1,7 +1,8 @@
 # TODO: use correct versions, name each container.
 services:
   kafka:
-    image: apache/kafka:3.9.1
+    image: apache/kafka:latest
+    container_name: kafka
     ports:
       - "9092:9092"
       - "9094:9094"
@@ -23,15 +24,25 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
 
+  kafka-init:
+    image: apache/kafka:latest
+    container_name: kafka-init
+    depends_on:
+      - kafka
+    init: true
+    command: /bin/bash -c "/opt/kafka/bin/kafka-topics.sh --create --topic query-logs --if-not-exists --replication-factor 1 --partitions 1 --bootstrap-server kafka:9092"
+
   cassandra:
-    image: cassandra:4.1
+    image: cassandra:latest
+    container_name: cassandra
     ports:
       - "9042:9042"
     volumes:
       - cassandra_data:/var/lib/cassandra
   
   postgres:
-    image: postgres:16
+    image: postgres:latest
+    container_name: postgres
     ports:
       - "5432:5432"
     environment:
@@ -47,7 +58,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   spark-master:
-    image: apache/spark:3.5.0
+    image: apache/spark:latest
     container_name: spark-master
     hostname: spark-master
     ports:
@@ -56,7 +67,7 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 8080
 
   spark-worker:
-    image: apache/spark:3.5.0
+    image: apache/spark:latest
     container_name: spark-worker
     depends_on:
       - spark-master
@@ -67,7 +78,7 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
 
   spark-submit:
-    image: apache/spark:3.5.0
+    image: apache/spark:latest
     container_name: spark-submit
     depends_on:
       - spark-master
@@ -80,10 +91,9 @@ services:
     command: >
       /bin/bash -c "
       echo 'Waiting for Kafka...' &&
-      while ! nc -z kafka 9092; do sleep 1; done;
-      
-      echo 'Ensuring topic exists...' &&
-      /opt/spark/bin/spark-class kafka.admin.TopicCommand --create --if-not-exists --topic query-logs --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+      until (echo > /dev/tcp/kafka/9092) 2>/dev/null; do 
+        sleep 1; 
+      done;
       
       echo 'Starting Spark Job...' &&
       /opt/spark/bin/spark-submit 
