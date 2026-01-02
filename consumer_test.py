@@ -5,7 +5,7 @@ from kafka import KafkaConsumer
 # 'earliest' means it will read all messages currently in the topic from the beginning.
 consumer = KafkaConsumer(
     'query-logs',
-    bootstrap_servers=['localhost:9092'],
+    bootstrap_servers=['localhost:9094'],
     auto_offset_reset='earliest', 
     enable_auto_commit=True,
     group_id='analysis-group',
