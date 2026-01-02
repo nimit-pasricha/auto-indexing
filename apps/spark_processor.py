@@ -3,8 +3,8 @@ from pyspark.sql.functions import from_json, col, window, count
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
 spark = (
-    SparkSession.builder.appName("IndexOptimizer").master("spark://spark-master:7077")
-    # .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0")
+    SparkSession.builder.appName("IndexOptimizer")
+    .master("spark://spark-master:7077")
     .getOrCreate()
 )
 
@@ -38,7 +38,7 @@ queries = (
 
 
 windowed_counts = queries.groupBy(
-    window(col("event_time"), "10 minutes", "1 minute"),
+    window(col("event_time"), "10 minutes"),
     col("table"),
     col("column"),
     col("operator"),
