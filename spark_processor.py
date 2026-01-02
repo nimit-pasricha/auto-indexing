@@ -19,8 +19,16 @@ schema = StructType(
 )
 
 
-df = spark.readStream \
-    .format("kafka") \
-    .option("kafka.bootstrap.servers") \
-    .option("subscribe", "query-logs") \
+df = (
+    spark.readStream.format("kafka")
+    .option("kafka.bootstrap.servers")
+    .option("subscribe", "query-logs")
     .load()
+)
+
+
+query_data = (
+    df.selectExpr("CAST(value AS STRING)")
+    .select(from_json(col("value"), schema).alias("data"))
+    .select("data.*")
+)
