@@ -42,6 +42,27 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  spark-master:
+    image: apache/spark:latest
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - "8080:8080" # Web UI
+      - "7077:7077" # Spark Master port
+    command: bin/spark-class org.apache.spark.deploy.master.Master
+
+  spark-worker:
+    image: apache/spark:latest
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=2G
+    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+
+
 volumes:
   kafka_data:
   cassandra_data:
