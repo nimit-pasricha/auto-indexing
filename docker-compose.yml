@@ -1,21 +1,25 @@
+# TODO: use correct versions, name each container.
 services:
   kafka:
     image: apache/kafka:latest
     ports:
       - "9092:9092"
+      - "9094:9094"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # EXTERNAL for connecting from outside docker container.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093, EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092, EXTERNAL://localhost:9094
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      CLUSTER_ID: 'bcsjdhabnmcdbcmnsabmnbasajkn'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      CLUSTER_ID: 'Mq699i8pS9u8z_v1XgA8pA'
     volumes:
       - kafka_data:/var/lib/kafka/data
 
@@ -49,7 +53,7 @@ services:
     ports:
       - "8080:8080" # Web UI
       - "7077:7077" # Spark Master port
-    command: bin/spark-class org.apache.spark.deploy.master.Master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 8080
 
   spark-worker:
     image: apache/spark:latest
@@ -60,7 +64,32 @@ services:
       - SPARK_MASTER=spark://spark-master:7077
       - SPARK_WORKER_CORES=1
       - SPARK_WORKER_MEMORY=2G
-    command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+
+  spark-submit:
+    image: apache/spark:latest
+    container_name: spark-submit
+    depends_on:
+      - spark-master
+      - spark-worker
+    volumes:
+      - ./apps:/opt/spark-apps
+    environment:
+      # need this because default directory is not writable in official apache image.
+      - SPARK_SUBMIT_OPTS=-Divy.cache.dir=/tmp/.ivy -Divy.home=/tmp/.ivy
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for Kafka...' &&
+      while ! nc -z kafka 9092; do sleep 1; done;
+      
+      echo 'Ensuring topic exists...' &&
+      /opt/spark/bin/spark-class kafka.admin.TopicCommand --create --if-not-exists --topic query-logs --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 &&
+      
+      echo 'Starting Spark Job...' &&
+      /opt/spark/bin/spark-submit 
+      --master spark://spark-master:7077
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.0
+      /opt/spark-apps/spark_processor.py"
 
 
 volumes:
