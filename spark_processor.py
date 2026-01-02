@@ -18,3 +18,9 @@ schema = StructType(
     ]
 )
 
+
+df = spark.readStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers") \
+    .option("subscribe", "query-logs") \
+    .load()
