@@ -14,21 +14,25 @@ schema = StructType(
         StructField("table", StringType()),
         StructField("column", StringType()),
         StructField("operator", StringType()),
+        # not directly casting to timestamp to avoid returning null on failed conversion.
         StructField("timestamp", DoubleType()),
     ]
 )
 
 
-df = (
+raw_stream = (
     spark.readStream.format("kafka")
-    .option("kafka.bootstrap.servers")
+    .option("kafka.bootstrap.servers", "kafka:9092")
     .option("subscribe", "query-logs")
     .load()
 )
 
-
-query_data = (
-    df.selectExpr("CAST(value AS STRING)")
+# 4. Transform: Parse JSON and Handle Time
+queries = (
+    raw_stream.selectExpr("CAST(value AS STRING)")
     .select(from_json(col("value"), schema).alias("data"))
     .select("data.*")
+    .withColumn("event_time", col("timestamp").cast("timestamp"))
+    .withWatermark("event_time", "10 minutes")
 )
+
