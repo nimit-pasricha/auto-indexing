@@ -44,6 +44,15 @@ windowed_counts = queries.groupBy(
     col("operator"),
 ).count()
 
+cassandra_df = windowed_counts.select(
+    col("window.start").alias("window_start"),
+    col("window.end").alias("window_end"),
+    col("table").alias("table_name"),
+    col("column").alias("column_name"),
+    col("operator"),
+    col("count").alias("query_count")
+)
+
 
 query = (
     windowed_counts.writeStream.outputMode("complete")
