@@ -42,16 +42,19 @@ queries = (
     .select(from_json(col("value"), schema).alias("data"))
     .select("data.*")
     .withColumn("event_time", col("timestamp").cast("timestamp"))
-    .withWatermark("event_time", "10 minutes")
 )
 
 
-windowed_counts = queries.groupBy(
-    window(col("event_time"), "10 minutes"),
-    col("table"),
-    col("column"),
-    col("operator"),
-).count()
+windowed_counts = (
+    queries.withWatermark("event_time", "1 hour")
+    .groupBy(
+        window(col("event_time"), "5 minutes"),
+        col("table"),
+        col("column"),
+        col("operator"),
+    )
+    .count()
+)
 
 
 cassandra_df = windowed_counts.select(
@@ -63,15 +66,21 @@ cassandra_df = windowed_counts.select(
     col("count").alias("query_count"),
 )
 
+def write_to_cassandra(df, batch_id):
+    # We use 'append' here because at the individual batch level, 
+    # we are just adding new rows/updates to the table.
+    # Overall system is still 'update'.
+    df.write \
+        .format("org.apache.spark.sql.cassandra") \
+        .options(table=CASSANDRA_TABLE, keyspace=CASSANDRA_KEYSPACE) \
+        .mode("append") \
+        .save()
 
-query = (
-    cassandra_df.writeStream.outputMode("append")
-    .format("org.apache.spark.sql.cassandra")
-    .option("checkpointLocation", "/opt/spark-apps/checkpoints/cassandra_sink")
-    .option("keyspace", CASSANDRA_KEYSPACE)
-    .option("table", CASSANDRA_TABLE)
+query = cassandra_df.writeStream \
+    .outputMode("update") \
+    .foreachBatch(write_to_cassandra) \
+    .option("checkpointLocation", "/opt/spark-apps/checkpoints/cassandra_sink") \
     .start()
-)
 
 
 query.awaitTermination()

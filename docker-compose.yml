@@ -85,6 +85,7 @@ services:
 
   spark-worker:
     image: apache/spark:4.1.0-scala2.13-java21-python3-r-ubuntu
+    user: root
     container_name: spark-worker
     depends_on:
       - spark-master
