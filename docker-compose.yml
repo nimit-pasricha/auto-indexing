@@ -1,7 +1,7 @@
 # TODO: use correct versions, name each container.
 services:
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:4.1.1
     container_name: kafka
     ports:
       - "9092:9092"
@@ -26,7 +26,7 @@ services:
     user: root
 
   kafka-init:
-    image: apache/kafka:latest
+    image: apache/kafka:4.1.1
     container_name: kafka-init
     depends_on:
       - kafka
@@ -34,7 +34,7 @@ services:
     command: /bin/bash -c "/opt/kafka/bin/kafka-topics.sh --create --topic query-logs --if-not-exists --replication-factor 1 --partitions 1 --bootstrap-server kafka:9092"
 
   cassandra:
-    image: cassandra:latest
+    image: cassandra:5.0.6
     container_name: cassandra
     ports:
       - "9042:9042"
@@ -42,7 +42,7 @@ services:
       - cassandra_data:/var/lib/cassandra
   
   postgres:
-    image: postgres:latest
+    image: postgres:15.15-trixie
     container_name: postgres
     ports:
       - "5432:5432"
@@ -59,7 +59,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   spark-master:
-    image: apache/spark:latest
+    image: apache/spark:4.1.0-scala2.13-java21-python3-r-ubuntu
     container_name: spark-master
     hostname: spark-master
     ports:
@@ -68,7 +68,7 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 8080
 
   spark-worker:
-    image: apache/spark:latest
+    image: apache/spark:4.1.0-scala2.13-java21-python3-r-ubuntu
     container_name: spark-worker
     depends_on:
       - spark-master
@@ -79,7 +79,7 @@ services:
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
 
   spark-submit:
-    image: apache/spark:latest
+    image: apache/spark:4.1.0-scala2.13-java21-python3-r-ubuntu
     container_name: spark-submit
     depends_on:
       - spark-master
