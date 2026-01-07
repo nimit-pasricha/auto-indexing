@@ -99,7 +99,7 @@ services:
       echo 'Starting Spark Job...' &&
       /opt/spark/bin/spark-submit 
       --master spark://spark-master:7077
-      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.0
+      --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.0,com.datastax.spark:spark-cassandra-connector_2.13:3.5.0
       /opt/spark-apps/spark_processor.py"
 
 
