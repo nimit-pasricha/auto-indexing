@@ -2,11 +2,19 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, window, count
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType
 
+KAFKA_BROKER = "kafka:9092"
+KAFKA_TOPIC = "query-logs"
+CASSANDRA_HOST = "cassandra"
+CASSANDRA_KEYSPACE = "index_optimizer"
+CASSANDRA_TABLE = "query_stats"
+
 spark = (
     SparkSession.builder.appName("IndexOptimizer")
-    .master("spark://spark-master:7077")
+    .config("spark.cassandra.connection.host", CASSANDRA_HOST)
     .getOrCreate()
 )
+
+spark.sparkContext.setLogLevel("WARN")
 
 schema = StructType(
     [
@@ -21,12 +29,13 @@ schema = StructType(
 
 raw_stream = (
     spark.readStream.format("kafka")
-    .option("kafka.bootstrap.servers", "kafka:9092")
-    .option("subscribe", "query-logs")
+    .option("kafka.bootstrap.servers", KAFKA_BROKER)
+    .option("subscribe", KAFKA_TOPIC)
     .option("startingOffsets", "earliest")
     .option("failOnDataLoss", "false")
     .load()
 )
+
 
 queries = (
     raw_stream.selectExpr("CAST(value AS STRING)")
@@ -44,22 +53,25 @@ windowed_counts = queries.groupBy(
     col("operator"),
 ).count()
 
+
 cassandra_df = windowed_counts.select(
     col("window.start").alias("window_start"),
     col("window.end").alias("window_end"),
     col("table").alias("table_name"),
     col("column").alias("column_name"),
     col("operator"),
-    col("count").alias("query_count")
+    col("count").alias("query_count"),
 )
 
 
 query = (
-    windowed_counts.writeStream.outputMode("complete")
-    .format("console")
-    .option("truncate", "false")
-    .trigger(processingTime="10 seconds")
+    cassandra_df.writeStream.outputMode("append")
+    .format("org.apache.spark.sql.cassandra")
+    .option("checkpointLocation", "/opt/spark-apps/checkpoints/cassandra_sink")
+    .option("keyspace", CASSANDRA_KEYSPACE)
+    .option("table", CASSANDRA_TABLE)
     .start()
 )
+
 
 query.awaitTermination()

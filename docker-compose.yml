@@ -1,4 +1,3 @@
-# TODO: use correct versions, name each container.
 services:
   kafka:
     image: apache/kafka:4.1.1
@@ -41,6 +40,23 @@ services:
     volumes:
       - cassandra_data:/var/lib/cassandra
   
+  cassandra-init:
+    image: cassandra:5.0.6
+    container_name: cassandra-init
+    depends_on:
+      - cassandra
+    volumes:
+      - ./apps:/apps
+    command: >
+      /bin/bash -c "
+      echo 'Waiting for Cassandra to be reachable...' &&
+      until cqlsh cassandra 9042 -e 'describe cluster' > /dev/null 2>&1; do
+        sleep 5
+      done;
+      echo 'Applying schema...' &&
+      cqlsh cassandra 9042 -f /apps/schema.cql &&
+      echo 'Schema applied successfully!'"
+  
   postgres:
     image: postgres:15.15-trixie
     container_name: postgres
@@ -81,6 +97,7 @@ services:
   spark-submit:
     image: apache/spark:4.1.0-scala2.13-java21-python3-r-ubuntu
     container_name: spark-submit
+    user: root
     depends_on:
       - spark-master
       - spark-worker
@@ -91,10 +108,9 @@ services:
       - SPARK_SUBMIT_OPTS=-Divy.cache.dir=/tmp/.ivy -Divy.home=/tmp/.ivy
     command: >
       /bin/bash -c "
-      echo 'Waiting for Kafka...' &&
-      until (echo > /dev/tcp/kafka/9092) 2>/dev/null; do 
-        sleep 1; 
-      done;
+      echo 'Waiting for Kafka and Cassandra...' &&
+      until (echo > /dev/tcp/kafka/9092) 2>/dev/null; do sleep 1; done;
+      until (echo > /dev/tcp/cassandra/9042) 2>/dev/null; do sleep 2; done;
       
       echo 'Starting Spark Job...' &&
       /opt/spark/bin/spark-submit 
