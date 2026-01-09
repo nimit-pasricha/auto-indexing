@@ -120,6 +120,18 @@ services:
       /opt/spark-apps/spark_processor.py"
 
 
+  actuator:
+    image: python:3.11-slim
+    container_name: actuator
+    depends_on:
+      - cassandra
+      - postgres
+    volumes:
+      - ./apps:/apps
+    command: >
+      sh -c "pip install psycopg2-binary cassandra-driver && python /apps/actuator.py"
+
+
 volumes:
   kafka_data:
   cassandra_data:
