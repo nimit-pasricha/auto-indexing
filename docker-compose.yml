@@ -128,6 +128,8 @@ services:
       - postgres
     volumes:
       - ./apps:/apps
+    environment:
+      - PYTHONUNBUFFERED=1
     command: >
       sh -c "pip install psycopg2-binary cassandra-driver && python /apps/actuator.py"
 
