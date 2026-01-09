@@ -34,6 +34,8 @@ def manage_indices():
     pg_conn.autocommit = True
     cur = pg_conn.cursor()
 
+    print("Connected.")
+
     processed_cols = set((table, col) for table, col, operator in recent_stats.keys())
 
     # Create indexes
