@@ -1,7 +1,8 @@
-import time
 import json
-import re
 import os
+import re
+import time
+
 from kafka import KafkaProducer
 
 # We ignore specific column value to keep data anonymous
@@ -26,7 +27,7 @@ def start_watcher():
         time.sleep(2)
 
     with open(log_path, "r") as f:
-        f.seek(0, 2) # move to end
+        f.seek(0, 2)  # move to end
 
         # basically the 'tail -f' functionality
         while True:
@@ -43,11 +44,12 @@ def start_watcher():
                     "table": table.lower(),
                     "column": col.lower(),
                     "operator": op,
-                    "timestamp": time.time()
+                    "timestamp": time.time(),
                 }
-                
-                producer.send('query-logs', payload)
+
+                producer.send("query-logs", payload)
                 print(f"📡 Sent: {table}.{col} {op} at {payload['timestamp']}")
+
 
 if __name__ == "__main__":
     start_watcher()
