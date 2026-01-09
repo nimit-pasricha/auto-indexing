@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir psycopg2-binary cassandra-driver
 
-COPY ../apps/actuator.py .
+COPY ./apps/actuator.py .
 
 ENV PYTHONUNBUFFERED=1
 

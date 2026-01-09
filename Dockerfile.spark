@@ -2,10 +2,14 @@ FROM apache/spark:3.5.0-python3
 
 USER root
 
+RUN mkdir -p /opt/spark-apps/checkpoints && chmod -R 777 /opt/spark-apps/checkpoints
+
 WORKDIR /opt/spark-apps
+
 
 RUN curl -o /opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.0.jar https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.12/3.5.0/spark-sql-kafka-0-10_2.12-3.5.0.jar && \
     curl -o /opt/spark/jars/spark-cassandra-connector_2.12-3.5.0.jar https://repo1.maven.org/maven2/com/datastax/spark/spark-cassandra-connector_2.12/3.5.0/spark-cassandra-connector_2.12-3.5.0.jar
     
 COPY ./apps/spark_processor.py .
+
 CMD ["/opt/spark/bin/spark-submit", "spark_processor.py"]

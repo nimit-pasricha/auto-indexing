@@ -9,10 +9,11 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
 CASSANDRA_HOSTS = os.getenv("CASSANDRA_HOST", "cassandra").split(",")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 CASSANDRA_TABLE = os.getenv("CASSANDRA_TABLE", "query_stats")
+SPARK_MASTER_URL = os.getenv("SPARK_MASTER_URL", "spark://spark-master:7077")
 
 spark = (
     SparkSession.builder.appName("IndexOptimizer")
-    .master("local[*]") # TODO: cluster instead of local
+    .master(SPARK_MASTER_URL)
     .config("spark.cassandra.connection.host", CASSANDRA_HOSTS)
     .getOrCreate()
 )

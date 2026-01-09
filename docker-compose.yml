@@ -16,6 +16,11 @@ x-cassandra-common: &cassandra-common
     - CASSANDRA_CLUSTER_NAME=AutoIndexerCluster
     - CASSANDRA_SEEDS=cassandra-1
 
+x-spark-common: &spark-common
+  image: apache/spark:3.5.0-python3
+  environment:
+    - SPARK_MASTER=spark://spark-master:7077
+
 services:
   # Kafka
 
@@ -71,6 +76,28 @@ services:
     volumes:
       - cass3_data:/var/lib/cassandra
 
+  spark-master:
+    <<: *spark-common
+    container_name: spark-master
+    ports:
+      - "8080:8080" # Web UI
+      - "7077:7077"
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+
+  spark-worker-1:
+    <<: *spark-common
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+
+  spark-worker-2:
+    <<: *spark-common
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+
   postgres:
     image: postgres:15.15-trixie
     container_name: postgres
@@ -85,24 +112,15 @@ services:
       - postgres_data:/var/lib/postgresql/data # Persistent User Dat
 
   watcher:
-    image: auto-idx-watcher:1.0
+    image: auto-index-watcher:1.0
     container_name: watcher
     volumes:
       - pg_logs:/var/log/postgresql:ro # Only needs the logs
     environment:
       - KAFKA_BROKERS=kafka:9092
 
-  spark:
-    image: my-spark-processor:1.0
-    container_name: spark
-    environment:
-      - KAFKA_BROKERS=kafka:9092
-      - CASSANDRA_HOSTS=cassandra
-    volumes:
-      - spark_checkpoints:/opt/spark-apps/checkpoints
-
   actuator:
-    image: my-actuator:1.0
+    image: auto-index-actuator:1.0
     container_name: actuator
     environment:
       - DB_HOST=postgres
@@ -111,9 +129,29 @@ services:
       - DB_PASS=password
       - CASSANDRA_HOSTS=cassandra
 
+  spark-stream:
+    image: auto-index-spark-stream
+    container_name: spark-submit:1.0
+    depends_on:
+      - spark-master
+      - spark-worker-1
+      - spark-worker-2
+      - kafka-1
+      - cassandra-1
+    environment:
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092,kafka-3:9092
+      - CASSANDRA_HOSTS=cassandra-1,cassandra-2,cassandra-3
+    volumes:
+      - spark_checkpoints:/opt/spark-apps/checkpoints
+
 volumes:
-  kafka_data:
-  cassandra_data:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
+  cass1_data:
+  cass2_data:
+  cass3_data:
   postgres_data:
   pg_logs:
   spark_checkpoints:
