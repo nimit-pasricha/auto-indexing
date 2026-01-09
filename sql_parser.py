@@ -1,6 +1,6 @@
 import sqlparse
-from sqlparse.sql import Where, Comparison, Identifier
-from sqlparse.tokens import Keyword, DML
+from sqlparse.sql import Comparison, Identifier, Where
+from sqlparse.tokens import DML, Keyword
 
 
 def extract_metadata(sql: str):

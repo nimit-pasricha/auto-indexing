@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import from_json, col, window, count
-from pyspark.sql.types import StructType, StructField, StringType, DoubleType
+from pyspark.sql.functions import col, count, from_json, window
+from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
 KAFKA_BROKER = "kafka:9092"
 KAFKA_TOPIC = "query-logs"

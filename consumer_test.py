@@ -1,4 +1,5 @@
 import json
+
 from kafka import KafkaConsumer
 
 # 'auto_offset_reset' determines where to start if the script hasn't seen the topic before.

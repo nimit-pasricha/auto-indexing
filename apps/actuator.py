@@ -1,6 +1,7 @@
 import time
-import psycopg2
 from datetime import datetime, timedelta
+
+import psycopg2
 from cassandra.cluster import Cluster
 
 PG_DSN = "host=postgres dbname=testdb user=admin password=password"
@@ -68,6 +69,7 @@ def manage_indices():
 
 
 if __name__ == "__main__":
+    print("Actuator waiting for spikes...")
     while True:
         try:
             manage_indices()
