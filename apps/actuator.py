@@ -37,7 +37,7 @@ def manage_indices():
     processed_cols = set((table, col) for table, col, operator in recent_stats.keys())
 
     # Create indexes
-    for (table, col), count in recent_stats.items():
+    for (table, col) in processed_cols:
 
         # Compute total count for (table, col) pairs across all operators.
         all_ops = {o: count for (t, c, o), count in recent_stats.items() if t == table and c == col}
@@ -51,7 +51,7 @@ def manage_indices():
             target_idx = f"auto_idx_{target_type}_{table}_{col}"
             opposite_idx = f"auto_idx_{'hash' if target_type == 'btree' else 'btree'}_{table}_{col}"
 
-            # Promotion Logic: If we need a B-Tree but a Hash exists, upgrade
+            # Promotion: If we need a B-Tree but a Hash exists, upgrade
             cur.execute(f"SELECT indexname FROM pg_indexes WHERE indexname = '{opposite_idx}'")
             if cur.fetchone() and target_type == "btree":
                 print(f"PROMOTING: {table}.{col} needs range support. Swapping Hash for B-Tree.")
@@ -78,7 +78,6 @@ def manage_indices():
         parts = idx_name.split('_')
         col_name = parts[-1] 
         
-        # Check long-term usage
         usage = sum(count for (t, c, o), count in long_term_stats.items() if t == table_name and c == col_name)
         
         if usage < DELETE_THRESHOLD:
