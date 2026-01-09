@@ -56,6 +56,8 @@ services:
     environment:
       - KAFKA_BROKERS=kafka:9092
       - CASSANDRA_HOSTS=cassandra
+    volumes:
+      - spark_checkpoints:/opt/spark-apps/checkpoints
 
   actuator:
     image: my-actuator:1.0
@@ -70,3 +72,4 @@ volumes:
   cassandra_data:
   postgres_data:
   pg_logs:
+  spark_checkpoints:
