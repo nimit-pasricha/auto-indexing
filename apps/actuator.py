@@ -5,10 +5,10 @@ from cassandra.cluster import Cluster
 
 PG_DSN = "host=postgres dbname=testdb user=admin password=password"
 C_HOSTS = ["cassandra"]
-CREATE_THRESHOLD = 50  # Queries in 30 mins to CREATE
-DELETE_THRESHOLD = 5  # Queries in 2 hours to DELETE
+CREATE_THRESHOLD = 50  # Num queries required in interval to CREATE index
+DELETE_THRESHOLD = 5  # Num Queries required in interval to DELETE index
 LOOKBACK_CREATE = 30  # Minutes
-LOOKBACK_DELETE = 120  # Minutes (2 hours)
+LOOKBACK_DELETE = 120  # Minutes
 
 
 def get_stats(session, minutes):
