@@ -8,19 +8,21 @@ from kafka.errors import NoBrokersAvailable
 
 # We ignore specific column value to keep data anonymous
 LOG_PATTERN = re.compile(
-    r'statement: SELECT .* FROM "?([\w\.]+)"? WHERE "?([\w\.]+)"?\s*([<>=!]+)', re.IGNORECASE
+    r'statement: SELECT .* FROM "?([\w\.]+)"? WHERE "?([\w\.]+)"?\s*([<>=!]+)',
+    re.IGNORECASE,
 )
+
 
 def get_producer(retries=5, delay=5):
     for i in range(retries):
         try:
             print(f"Attempting to connect to Kafka (Attempt {i+1}/{retries})...")
             producer = KafkaProducer(
-                bootstrap_servers=['kafka:9092'],
-                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                bootstrap_servers=["kafka:9092"],
+                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 # Built-in retries for individual message sends
                 retries=5,
-                retry_backoff_ms=1000
+                retry_backoff_ms=1000,
             )
             print("Connected to Kafka!")
             return producer
@@ -56,7 +58,10 @@ def start_watcher():
             if match:
                 table, col, op = match.groups()
 
-                if table.lower().startswith('pg_') or table.lower() == 'information_schema':
+                if (
+                    table.lower().startswith("pg_")
+                    or table.lower() == "information_schema"
+                ):
                     continue
 
                 payload = {
