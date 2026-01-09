@@ -67,20 +67,22 @@ def manage_indices():
                 except Exception as e:
                     print(f"Creation Error: {e}")
 
-    # Delete stale auto generated indexes
-    cur.execute(
-        "SELECT indexname, tablename FROM pg_indexes WHERE indexname LIKE 'auto_idx_%'"
-    )
-    existing_auto_indexes = cur.fetchall()
-    for idx_name, table_name in existing_auto_indexes:
-        # Extract column name from index name (auto_idx_table_column)
-        col_name = idx_name.replace(f"auto_idx_{table_name}_", "")
 
-        current_usage = long_term_stats.get((table_name, col_name), 0)
-        if current_usage < DELETE_THRESHOLD:
-            print(
-                f"Deleting stale index {idx_name} (Only {current_usage} queries in {LOOKBACK_DELETE}m.)"
-            )
+    # Delete stale auto generated indexes
+    cur.execute("SELECT indexname, tablename FROM pg_indexes WHERE indexname LIKE 'auto_idx_%'")
+    existing_auto_indexes = cur.fetchall()
+
+    for idx_name, table_name in existing_auto_indexes:
+        # Index Naming Scheme: (auto_idx_TYPE_TABLE_COL)
+        # eg parts looks like: ['auto', 'idx', 'btree', 'users', 'email']
+        parts = idx_name.split('_')
+        col_name = parts[-1] 
+        
+        # Check long-term usage
+        usage = sum(count for (t, c, o), count in long_term_stats.items() if t == table_name and c == col_name)
+        
+        if usage < DELETE_THRESHOLD:
+            print(f"Deleting stale index {idx_name} (Only {usage} queries in {LOOKBACK_DELETE}m)")
             cur.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {idx_name}")
 
     cur.close()
@@ -89,7 +91,7 @@ def manage_indices():
 
 
 if __name__ == "__main__":
-    print("Actuator waiting for spikes...")
+    print(f"Actuator active. Creation: {CREATE_THRESHOLD}q/{LOOKBACK_CREATE}m | Cleanup: {DELETE_THRESHOLD}q/{LOOKBACK_DELETE}m")
     while True:
         try:
             manage_indices()
