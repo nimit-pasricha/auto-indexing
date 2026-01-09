@@ -1,15 +1,20 @@
+import os
 import time
 from datetime import datetime, timedelta
 
 import psycopg2
 from cassandra.cluster import Cluster
 
-PG_DSN = "host=postgres dbname=testdb user=admin password=password"
-C_HOSTS = ["cassandra"]
-CREATE_THRESHOLD = 50  # Num queries required in interval to CREATE index
-DELETE_THRESHOLD = 5  # Num Queries required in interval to DELETE index
-LOOKBACK_CREATE = 30  # Minutes
-LOOKBACK_DELETE = 120  # Minutes
+PG_DSN = os.getenv("PG_DSN", "host=postgres dbname=testdb user=admin password=password")
+C_HOSTS = os.getenv("CASSANDRA_HOSTS", "cassandra").split(",")
+C_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
+
+CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", 50))
+DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", 5))
+LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", 30))  # Minutes
+LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", 120))  # Minutes
+
+
 
 
 def get_stats(session, minutes):
@@ -26,17 +31,19 @@ def get_stats(session, minutes):
 def is_cardinality_too_low(cur, table, col):
     # Force Postgres to update its stats before we check
     cur.execute(f"ANALYZE {table}")
-    
-    cur.execute(f"""
+
+    cur.execute(
+        f"""
         SELECT n_distinct 
         FROM pg_stats 
         WHERE tablename = '{table}' AND attname = '{col}'
-    """)
+    """
+    )
     res = cur.fetchone()
-    
+
     if not res or res[0] == 0:
-        return False # Not enough data yet to decide, assume it's okay
-        
+        return False  # Not enough data yet to decide, assume it's okay
+
     n_distinct = res[0]
 
     """
@@ -44,13 +51,15 @@ def is_cardinality_too_low(cur, table, col):
     - If > 0, it's the absolute number of distinct values.
     - If < 0, it's the ratio (e.g., -0.1 is 10%).
     """
-    
+
     # THRESHOLD LOGIC:
     # If absolute distinct values < 10 (like Gender, StatusCodes)
     # OR if distinct ratio is less than 5% (like Country in a huge table)
-    if (n_distinct > 0 and n_distinct < 10) or (n_distinct < 0 and abs(n_distinct) < 0.05):
+    if (n_distinct > 0 and n_distinct < 10) or (
+        n_distinct < 0 and abs(n_distinct) < 0.05
+    ):
         return True
-    
+
     return False
 
 
@@ -84,7 +93,7 @@ def manage_indices():
             if is_cardinality_too_low(cur, table, col):
                 print(f"SKIPPING: {table}.{col} has too low cardinality for an index.")
                 continue
-            
+
             has_range_query = any(
                 op in [">", "<", ">=", "<=", "!="] for op in all_ops.keys()
             )
