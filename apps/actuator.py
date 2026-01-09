@@ -27,4 +27,23 @@ def run_actuator():
         stats[key] = stats.get(key, 0) + row.query_count
 
 
+    pg_conn = psycopg2.connect(PG_DSN)
+    pg_conn.autocommit = True
+    cur = pg_conn.cursor()
+
+    for (table, col), total_count in stats.items():
+        if total_count >= THRESHOLD:
+            idx_name = f"idx_{table}_{col}"
+            
+            # Check if index already exists
+            cur.execute(f"SELECT 1 FROM pg_indexes WHERE indexname = '{idx_name}'")
+            if not cur.fetchone():
+                print(f"TREND: {table}.{col} has {total_count} queries in the last {LOOKBACK_MINUTES}m.")
+                try:
+                    cur.execute(f"CREATE INDEX CONCURRENTLY {idx_name} ON {table} ({col})")
+                    print(f"Created index {idx_name}")
+                except Exception as e:
+                    print(f"Error while creating index: {e}")
+
+
     
