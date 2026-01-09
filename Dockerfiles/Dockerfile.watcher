@@ -2,10 +2,10 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir psycopg2-binary cassandra-driver
+RUN pip install --no-cache-dir kafka-python
 
-COPY ../apps/actuator.py .
+COPY ./apps/watcher.py .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python3", "actuator.py"]
+CMD ["python", "watcher.py"]
