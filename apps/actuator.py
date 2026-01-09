@@ -15,7 +15,29 @@ LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", 30))  # Minutes
 LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", 120))  # Minutes
 
 
-
+def setup_cassandra_schema():
+    """Ensures the Cassandra environment is ready for Spark and the Actuator."""
+    cluster = Cluster(C_HOSTS)
+    session = cluster.connect()
+    print("Initializing Cassandra Schema...")
+    session.execute(f"""
+        CREATE KEYSPACE IF NOT EXISTS {C_KEYSPACE} 
+        WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}};
+    """)
+    session.execute(f"USE {C_KEYSPACE};")
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS query_stats (
+            table_name text,
+            window_start timestamp,
+            window_end timestamp,
+            column_name text,
+            operator text,
+            query_count int,
+            PRIMARY KEY ((table_name), window_start, window_end, column_name, operator)
+        ) WITH default_time_to_live = 86400;
+    """)
+    cluster.shutdown()
+    
 
 def get_stats(session, minutes):
     cutoff = datetime.now() - timedelta(minutes=minutes)
