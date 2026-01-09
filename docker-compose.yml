@@ -2,9 +2,6 @@ services:
   kafka:
     image: apache/kafka:4.1.1
     container_name: kafka
-    ports:
-      - "9092:9092"
-      - "9094:9094"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -24,21 +21,13 @@ services:
       - kafka_data:/tmp/kafka-logs
     user: root
 
-  kafka-init:
-    image: apache/kafka:4.1.1
-    container_name: kafka-init
-    depends_on:
-      - kafka
-    init: true
-    command: /bin/bash -c "/opt/kafka/bin/kafka-topics.sh --create --topic query-logs --if-not-exists --replication-factor 1 --partitions 1 --bootstrap-server kafka:9092"
 
   cassandra:
     image: cassandra:5.0.6
     container_name: cassandra
-    ports:
-      - "9042:9042"
     volumes:
       - cassandra_data:/var/lib/cassandra
+
   
   cassandra-init:
     image: cassandra:5.0.6
@@ -58,25 +47,10 @@ services:
       echo 'Schema applied successfully!'"
   
   postgres:
-    image: postgres:15.15-trixie
-    container_name: postgres
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: testdb
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U admin -d testdb" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    command: >
-      postgres 
-      -c log_statement=all
-      -c logging_collector=on 
-      -c log_directory=/var/log/postgresql 
-      -c log_filename=postgresql.log
+    image: postgres:15
+    command: postgres -c log_statement=all -c logging_collector=on -c log_directory=/var/log/postgresql -c log_filename=postgresql.log
+    volumes:
+      - pg_logs:/var/log/postgresql
     volumes:
       - pg_logs:/var/log/postgresql
       - postgres_data:/var/lib/postgresql/data

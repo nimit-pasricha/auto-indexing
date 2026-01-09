@@ -3,8 +3,9 @@ import os
 import re
 import time
 
-from kafka import KafkaProducer
-from kafka.errors import NoBrokersAvailable
+from kafka import KafkaAdminClient, KafkaProducer
+from kafka.admin import NewTopic
+from kafka.errors import NoBrokersAvailable, TopicAlreadyExistsError
 
 KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "kafka:9092").split(",")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
@@ -15,6 +16,21 @@ LOG_PATTERN = re.compile(
     r'statement: SELECT .* FROM "?([\w\.]+)"? WHERE "?([\w\.]+)"?\s*([<>=!]+)',
     re.IGNORECASE,
 )
+
+
+def ensure_topic_exists():
+    """Explicitly creates the Kafka topic if it doesn't exist."""
+    admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BROKERS)
+    topic = NewTopic(name=KAFKA_TOPIC, num_partitions=1, replication_factor=1)
+    try:
+        admin_client.create_topics(new_topics=[topic], validate_only=False)
+        print(f"Topic '{KAFKA_TOPIC}' created.")
+    except TopicAlreadyExistsError:
+        print(f"Topic '{KAFKA_TOPIC}' already exists.")
+    except Exception as e:
+        print(f"Error creating topic: {e}")
+    finally:
+        admin_client.close()
 
 
 def get_producer(retries=5, delay=5):
@@ -28,6 +44,7 @@ def get_producer(retries=5, delay=5):
                 retries=5,
                 retry_backoff_ms=1000,
             )
+            ensure_topic_exists()
             print("Connected to Kafka!")
             return producer
         except NoBrokersAvailable:
