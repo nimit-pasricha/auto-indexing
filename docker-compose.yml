@@ -71,8 +71,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    command: >
+      postgres 
+      -c log_statement=all 
+      -c logging_collector=on 
+      -c log_directory=/var/log/postgresql 
+      -c log_filename=postgresql.log
     volumes:
+      - pg_logs:/var/log/postgresql
       - postgres_data:/var/lib/postgresql/data
+  
+  watcher:
+    image: python:3.13-slim
+    container_name: watcher
+    depends_on:
+      - postgres
+      - kafka
+    volumes:
+      - ./apps:/apps
+      - pg_logs:/var/log/postgresql:ro # Read-only
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: >
+      sh -c "pip install kafka-python && python3 /apps/watcher.py"
 
   spark-master:
     image: apache/spark:4.1.0-scala2.13-java21-python3-r-ubuntu
@@ -119,9 +140,8 @@ services:
       --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.1.0,com.datastax.spark:spark-cassandra-connector_2.13:3.5.0
       /opt/spark-apps/spark_processor.py"
 
-
   actuator:
-    image: python:3.11-slim
+    image: python:3.13-slim
     container_name: actuator
     depends_on:
       - cassandra
@@ -131,7 +151,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     command: >
-      sh -c "pip install psycopg2-binary cassandra-driver && python /apps/actuator.py"
+      sh -c "pip install psycopg2-binary cassandra-driver && python3 /apps/actuator.py"
 
 
 volumes:
