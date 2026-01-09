@@ -8,7 +8,7 @@ from kafka.errors import NoBrokersAvailable
 
 # We ignore specific column value to keep data anonymous
 LOG_PATTERN = re.compile(
-    r"statement: SELECT .* FROM ([\w\.]+) WHERE (\w+)\s*([<>=!]+)", re.IGNORECASE
+    r'statement: SELECT .* FROM "?([\w\.]+)"? WHERE "?([\w\.]+)"?\s*([<>=!]+)', re.IGNORECASE
 )
 
 def get_producer(retries=5, delay=5):
@@ -33,10 +33,7 @@ def get_producer(retries=5, delay=5):
 def start_watcher():
     print("Watcher active: Monitoring Postgres logs for patterns...")
 
-    producer = KafkaProducer(
-        bootstrap_servers=["kafka:9092"],
-        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-    )
+    producer = get_producer()
 
     log_path = "/var/log/postgresql/postgresql.log"
 
@@ -67,7 +64,7 @@ def start_watcher():
                 }
 
                 producer.send("query-logs", payload)
-                print(f"📡 Sent: {table}.{col} {op} at {payload['timestamp']}")
+                print(f"Sent: {table}.{col} {op} at {payload['timestamp']}")
 
 
 if __name__ == "__main__":
