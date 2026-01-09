@@ -11,4 +11,4 @@ CREATE TABLE IF NOT EXISTS query_stats (
     operator text,
     query_count counter,
     PRIMARY KEY ((table_name), window_start, window_end, column_name, operator)
-);
+) WITH default_time_to_live = 86400;
