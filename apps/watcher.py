@@ -38,7 +38,7 @@ def get_producer(retries=5, delay=5):
         try:
             print(f"Attempting to connect to Kafka (Attempt {i+1}/{retries})...")
             producer = KafkaProducer(
-                bootstrap_servers=[KAFKA_BROKER],
+                bootstrap_servers=KAFKA_BROKERS,
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 # Built-in retries for individual message sends
                 retries=5,
