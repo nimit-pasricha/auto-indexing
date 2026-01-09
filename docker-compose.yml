@@ -158,3 +158,4 @@ volumes:
   kafka_data:
   cassandra_data:
   postgres_data:
+  pg_logs:
