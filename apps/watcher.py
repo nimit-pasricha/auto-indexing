@@ -56,6 +56,9 @@ def start_watcher():
             if match:
                 table, col, op = match.groups()
 
+                if table.lower().startswith('pg_') or table.lower() == 'information_schema':
+                    continue
+
                 payload = {
                     "table": table.lower(),
                     "column": col.lower(),
