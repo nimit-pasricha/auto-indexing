@@ -5,7 +5,13 @@ from datetime import datetime, timedelta
 import psycopg2
 from cassandra.cluster import Cluster
 
-PG_DSN = os.getenv("PG_DSN", "host=postgres dbname=testdb user=admin password=password")
+DB_HOST = os.getenv("DB_HOST", "postgres")
+DB_NAME = os.getenv("DB_NAME", "testdb")
+DB_USER = os.getenv("DB_USER", "admin")
+DB_PASS = os.getenv("DB_PASS", "password")
+DB_PORT = os.getenv("DB_PORT", "5432")
+PG_DSN = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
+
 CASSANDRA_HOSTS = os.getenv("CASSANDRA_HOSTS", "cassandra").split(",")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 

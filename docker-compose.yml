@@ -1,3 +1,5 @@
+# TODO: create environment vars with all defaults
+
 services:
   kafka:
     image: apache/kafka:4.1.1
@@ -63,7 +65,10 @@ services:
     image: my-actuator:1.0
     container_name: actuator
     environment:
-      - PG_DSN=host=postgres dbname=testdb user=admin password=password
+      - DB_HOST=postgres
+      - DB_NAME=testdb
+      - DB_USER=admin
+      - DB_PASS=password
       - CASSANDRA_HOSTS=cassandra
 
 

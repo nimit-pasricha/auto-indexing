@@ -59,7 +59,7 @@ def start_watcher():
     producer = get_producer()
 
     # Wait for log file to exist
-    while not os.path.exists(log_path):
+    while not os.path.exists(LOG_PATH):
         print(f"Waiting for Postgres log file at {LOG_PATH}...")
         time.sleep(2)
 
