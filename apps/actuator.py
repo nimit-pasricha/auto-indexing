@@ -23,6 +23,37 @@ def get_stats(session, minutes):
     return stats
 
 
+def is_cardinality_too_low(cur, table, col):
+    # Force Postgres to update its stats before we check
+    cur.execute(f"ANALYZE {table}")
+    
+    cur.execute(f"""
+        SELECT n_distinct 
+        FROM pg_stats 
+        WHERE tablename = '{table}' AND attname = '{col}'
+    """)
+    res = cur.fetchone()
+    
+    if not res or res[0] == 0:
+        return False # Not enough data yet to decide, assume it's okay
+        
+    n_distinct = res[0]
+
+    """
+    n_distinct: 
+    - If > 0, it's the absolute number of distinct values.
+    - If < 0, it's the ratio (e.g., -0.1 is 10%).
+    """
+    
+    # THRESHOLD LOGIC:
+    # If absolute distinct values < 10 (like Gender, StatusCodes)
+    # OR if distinct ratio is less than 5% (like Country in a huge table)
+    if (n_distinct > 0 and n_distinct < 10) or (n_distinct < 0 and abs(n_distinct) < 0.05):
+        return True
+    
+    return False
+
+
 def manage_indices():
     cluster = Cluster(C_HOSTS)
     session = cluster.connect("index_optimizer")
@@ -50,6 +81,10 @@ def manage_indices():
         total_recent = sum(all_ops.values())
 
         if total_recent >= CREATE_THRESHOLD:
+            if is_cardinality_too_low(cur, table, col):
+                print(f"SKIPPING: {table}.{col} has too low cardinality for an index.")
+                continue
+            
             has_range_query = any(
                 op in [">", "<", ">=", "<=", "!="] for op in all_ops.keys()
             )
