@@ -4,12 +4,12 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, from_json, window
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "kafka:9092").split(",")
+KAFKA_BROKERS = os.environ["KAFKA_BROKERS"]
+CASSANDRA_HOSTS = os.environ["CASSANDRA_HOSTS"]
+SPARK_MASTER_URL = os.environ["SPARK_MASTER_URL"]
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
-CASSANDRA_HOSTS = os.getenv("CASSANDRA_HOST", "cassandra").split(",")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 CASSANDRA_TABLE = os.getenv("CASSANDRA_TABLE", "query_stats")
-SPARK_MASTER_URL = os.getenv("SPARK_MASTER_URL", "spark://spark-master:7077")
 
 spark = (
     SparkSession.builder.appName("IndexOptimizer")

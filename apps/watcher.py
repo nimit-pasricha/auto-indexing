@@ -7,9 +7,10 @@ from kafka import KafkaAdminClient, KafkaProducer
 from kafka.admin import NewTopic
 from kafka.errors import NoBrokersAvailable, TopicAlreadyExistsError
 
-KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "kafka:9092").split(",")
+KAFKA_BROKERS = os.environ["KAFKA_BROKERS"].split(",")
+LOG_PATH = os.environ["LOG_PATH"]
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
-LOG_PATH = os.getenv("LOG_PATH", "/var/log/postgresql/postgresql.log")
+KAFKA_REPLICATION = int(os.getenv("KAFKA_REPLICATION_FACTOR", "2"))
 
 # We ignore specific column value to keep data anonymous
 LOG_PATTERN = re.compile(
@@ -21,7 +22,11 @@ LOG_PATTERN = re.compile(
 def ensure_topic_exists():
     """Explicitly creates the Kafka topic if it doesn't exist."""
     admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BROKERS)
-    topic = NewTopic(name=KAFKA_TOPIC, num_partitions=1, replication_factor=1)
+    topic = NewTopic(
+        name=KAFKA_TOPIC,
+        num_partitions=KAFKA_REPLICATION,
+        replication_factor=KAFKA_REPLICATION,
+    )
     try:
         admin_client.create_topics(new_topics=[topic], validate_only=False)
         print(f"Topic '{KAFKA_TOPIC}' created.")

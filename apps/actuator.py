@@ -5,21 +5,21 @@ from datetime import datetime, timedelta
 import psycopg2
 from cassandra.cluster import Cluster
 
-DB_HOST = os.getenv("DB_HOST", "postgres")
-DB_NAME = os.getenv("DB_NAME", "testdb")
-DB_USER = os.getenv("DB_USER", "admin")
-DB_PASS = os.getenv("DB_PASS", "password")
+DB_HOST = os.environ["DB_HOST"]
+DB_NAME = os.environ["DB_NAME"]
+DB_USER = os.environ["DB_USER"]
+DB_PASS = os.environ["DB_PASS"]
+CASSANDRA_HOSTS = os.environ["CASSANDRA_HOSTS"].split(",")
+
 DB_PORT = os.getenv("DB_PORT", "5432")
-PG_DSN = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
-
-CASSANDRA_HOSTS = os.getenv("CASSANDRA_HOSTS", "cassandra").split(",")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
+CASSANDRA_REPLICATION = int(os.getenv("CASSANDRA_REPLICATION_FACTOR", "2"))
+CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", "50"))
+DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", "5"))
+LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", "30"))
+LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", "120"))
 
-CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", 50))
-DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", 5))
-LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", 30))  # Minutes
-LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", 120))  # Minutes
-
+PG_DSN = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
 
 def setup_cassandra_schema():
     """Ensures the Cassandra environment is ready for Spark and the Actuator."""
@@ -48,6 +48,7 @@ def setup_cassandra_schema():
             setup_complete = True
         except Exception as e:
             print(f"Error while connecting to cassandra: {e}")
+            time.sleep(0.1)
     cluster.shutdown()
 
 
