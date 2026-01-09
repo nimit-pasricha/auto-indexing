@@ -4,16 +4,16 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, from_json, window
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
+KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "kafka:9092").split(",")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
-CASSANDRA_HOST = os.getenv("CASSANDRA_HOST", "cassandra")
+CASSANDRA_HOSTS = os.getenv("CASSANDRA_HOST", "cassandra").split(",")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 CASSANDRA_TABLE = os.getenv("CASSANDRA_TABLE", "query_stats")
 
 spark = (
     SparkSession.builder.appName("IndexOptimizer")
     .master("local[*]") # TODO: cluster instead of local
-    .config("spark.cassandra.connection.host", CASSANDRA_HOST)
+    .config("spark.cassandra.connection.host", CASSANDRA_HOSTS)
     .getOrCreate()
 )
 
@@ -32,7 +32,7 @@ schema = StructType(
 
 raw_stream = (
     spark.readStream.format("kafka")
-    .option("kafka.bootstrap.servers", KAFKA_BROKER)
+    .option("kafka.bootstrap.servers", KAFKA_BROKERS)
     .option("subscribe", KAFKA_TOPIC)
     .option("startingOffsets", "earliest")
     .option("failOnDataLoss", "false")

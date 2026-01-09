@@ -6,6 +6,10 @@ import time
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
+KAFKA_BROKERS = os.getenv("KAFKA_BROKERS", "kafka:9092").split(",")
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
+LOG_PATH = os.getenv("LOG_PATH", "/var/log/postgresql/postgresql.log")
+
 # We ignore specific column value to keep data anonymous
 LOG_PATTERN = re.compile(
     r'statement: SELECT .* FROM "?([\w\.]+)"? WHERE "?([\w\.]+)"?\s*([<>=!]+)',
@@ -18,7 +22,7 @@ def get_producer(retries=5, delay=5):
         try:
             print(f"Attempting to connect to Kafka (Attempt {i+1}/{retries})...")
             producer = KafkaProducer(
-                bootstrap_servers=["kafka:9092"],
+                bootstrap_servers=[KAFKA_BROKER],
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 # Built-in retries for individual message sends
                 retries=5,
@@ -37,14 +41,12 @@ def start_watcher():
 
     producer = get_producer()
 
-    log_path = "/var/log/postgresql/postgresql.log"
-
     # Wait for log file to exist
     while not os.path.exists(log_path):
-        print("Waiting for Postgres log file...")
+        print(f"Waiting for Postgres log file at {LOG_PATH}...")
         time.sleep(2)
 
-    with open(log_path, "r") as f:
+    with open(LOG_PATH, "r") as f:
         f.seek(0, 2)  # move to end
 
         # basically the 'tail -f' functionality
@@ -71,7 +73,7 @@ def start_watcher():
                     "timestamp": time.time(),
                 }
 
-                producer.send("query-logs", payload)
+                producer.send(KAFKA_TOPIC, payload)
                 print(f"Sent: {table}.{col} {op} at {payload['timestamp']}")
 
 

@@ -6,8 +6,8 @@ import psycopg2
 from cassandra.cluster import Cluster
 
 PG_DSN = os.getenv("PG_DSN", "host=postgres dbname=testdb user=admin password=password")
-C_HOSTS = os.getenv("CASSANDRA_HOSTS", "cassandra").split(",")
-C_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
+CASSANDRA_HOSTS = os.getenv("CASSANDRA_HOSTS", "cassandra").split(",")
+CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 
 CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", 50))
 DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", 5))
@@ -20,14 +20,14 @@ def setup_cassandra_schema():
     setup_complete = False
     while not setup_complete:
         try:
-            cluster = Cluster(C_HOSTS)
+            cluster = Cluster(CASSANDRA_HOSTS)
             session = cluster.connect()
             print("Initializing Cassandra Schema...")
             session.execute(f"""
-                CREATE KEYSPACE IF NOT EXISTS {C_KEYSPACE} 
+                CREATE KEYSPACE IF NOT EXISTS {CASSANDRA_KEYSPACE} 
                 WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}};
             """)
-            session.execute(f"USE {C_KEYSPACE};")
+            session.execute(f"USE {CASSANDRA_KEYSPACE};")
             session.execute("""
                 CREATE TABLE IF NOT EXISTS query_stats (
                     table_name text,
@@ -92,7 +92,7 @@ def is_cardinality_too_low(cur, table, col):
 
 
 def manage_indices():
-    cluster = Cluster(C_HOSTS)
+    cluster = Cluster(CASSANDRA_HOSTS)
     session = cluster.connect("index_optimizer")
 
     recent_stats = get_stats(session, LOOKBACK_CREATE)

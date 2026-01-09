@@ -73,7 +73,7 @@ services:
       retries: 5
     command: >
       postgres 
-      -c log_statement=all 
+      -c log_statement=all
       -c logging_collector=on 
       -c log_directory=/var/log/postgresql 
       -c log_filename=postgresql.log
