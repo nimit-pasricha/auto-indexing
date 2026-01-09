@@ -14,11 +14,11 @@ LOOKBACK_DELETE = 120  # Minutes
 
 def get_stats(session, minutes):
     cutoff = datetime.now() - timedelta(minutes=minutes)
-    cql = "SELECT table_name, column_name, query_count FROM query_stats WHERE window_start > %s ALLOW FILTERING"
+    cql = "SELECT table_name, column_name, operator, query_count FROM query_stats WHERE window_start > %s ALLOW FILTERING"
     rows = session.execute(cql, [cutoff])
     stats = {}
     for row in rows:
-        key = (row.table_name, row.column_name)
+        key = (row.table_name, row.column_name, row.operator)
         stats[key] = stats.get(key, 0) + row.query_count
     return stats
 
@@ -34,18 +34,38 @@ def manage_indices():
     pg_conn.autocommit = True
     cur = pg_conn.cursor()
 
+    processed_cols = set((table, col) for table, col, operator in recent_stats.keys())
+
     # Create indexes
     for (table, col), count in recent_stats.items():
-        if count >= CREATE_THRESHOLD:
-            # use this 'auto_idx_' prefix to separate auto generated idxs from user generated ones.
-            idx_name = f"auto_idx_{table}_{col}"
-            # Check if index already exists
-            cur.execute(f"SELECT 1 FROM pg_indexes WHERE indexname = '{idx_name}'")
+
+        # Compute total count for (table, col) pairs across all operators.
+        all_ops = {o: count for (t, c, o), count in recent_stats.items() if t == table and c == col}
+        total_recent = sum(all_ops.values())
+
+        if total_recent >= CREATE_THRESHOLD:
+            has_range_query = any(op in ['>', '<', '>=', '<=', '!='] for op in all_ops.keys())
+            target_type = "btree" if has_range_query else "hash"
+
+            # auto_idx_ prefix to differentiate auto generated and user generated indexes
+            target_idx = f"auto_idx_{target_type}_{table}_{col}"
+            opposite_idx = f"auto_idx_{'hash' if target_type == 'btree' else 'btree'}_{table}_{col}"
+
+            # Promotion Logic: If we need a B-Tree but a Hash exists, upgrade
+            cur.execute(f"SELECT indexname FROM pg_indexes WHERE indexname = '{opposite_idx}'")
+            if cur.fetchone() and target_type == "btree":
+                print(f"PROMOTING: {table}.{col} needs range support. Swapping Hash for B-Tree.")
+                cur.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {opposite_idx}")
+            
+            # Create the target index if it doesn't exist
+            cur.execute(f"SELECT 1 FROM pg_indexes WHERE indexname = '{target_idx}'")
             if not cur.fetchone():
-                print(
-                    f"Creating index for {table}.{col} ({count} queries in the last {LOOKBACK_CREATE}m)."
-                )
-                cur.execute(f"CREATE INDEX CONCURRENTLY {idx_name} ON {table} ({col})")
+                print(f"Creating {target_idx} (Recent query count: {total_recent})")
+                try:
+                    # Note: Hash indexes support CONCURRENTLY in PG 10+
+                    cur.execute(f"CREATE INDEX CONCURRENTLY {target_idx} ON {table} USING {target_type} ({col})")
+                except Exception as e:
+                    print(f"Creation Error: {e}")
 
     # Delete stale auto generated indexes
     cur.execute(
