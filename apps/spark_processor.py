@@ -1,15 +1,18 @@
+import os
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, from_json, window
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-KAFKA_BROKER = "kafka:9092"
-KAFKA_TOPIC = "query-logs"
-CASSANDRA_HOST = "cassandra"
-CASSANDRA_KEYSPACE = "index_optimizer"
-CASSANDRA_TABLE = "query_stats"
+KAFKA_BROKER = os.getenv("KAFKA_BROKER", "kafka:9092")
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
+CASSANDRA_HOST = os.getenv("CASSANDRA_HOST", "cassandra")
+CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
+CASSANDRA_TABLE = os.getenv("CASSANDRA_TABLE", "query_stats")
 
 spark = (
     SparkSession.builder.appName("IndexOptimizer")
+    .master("local[*]") # TODO: cluster instead of local
     .config("spark.cassandra.connection.host", CASSANDRA_HOST)
     .getOrCreate()
 )

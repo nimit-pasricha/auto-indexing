@@ -186,6 +186,7 @@ if __name__ == "__main__":
     print(
         f"Actuator active. Creation: {CREATE_THRESHOLD}q/{LOOKBACK_CREATE}m | Cleanup: {DELETE_THRESHOLD}q/{LOOKBACK_DELETE}m"
     )
+    setup_cassandra_schema()
     while True:
         try:
             manage_indices()
