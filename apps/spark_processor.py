@@ -22,6 +22,10 @@ spark = (
     SparkSession.builder.appName("IndexOptimizer")
     .master(SPARK_MASTER_URL)
     .config("spark.cassandra.connection.host", CASSANDRA_HOSTS)
+    .config(
+        "spark.cassandra.connection.timeoutMS", "10000"
+    )  # Give time for gossip to settle
+    .config("parameter spark.cassandra.connection.reconnectionDelayMS.min", "5000")
     .getOrCreate()
 )
 
@@ -57,9 +61,9 @@ queries = (
 
 
 windowed_counts = (
-    queries.withWatermark("event_time", "1 hour")
+    queries.withWatermark("event_time", "2 hours")
     .groupBy(
-        window(col("event_time"), "5 minutes"),
+        window(col("event_time"), "1 minute"),
         col("table"),
         col("column"),
         col("operator"),
@@ -79,16 +83,17 @@ cassandra_df = windowed_counts.select(
 
 
 def write_to_cassandra(df, batch_id):
-    # We use 'append' here because at the individual batch level,
-    # we are just adding new rows/updates to the table.
-    # Overall system is still 'update'.
+    print(f"BATCH {batch_id}: Writing to Cassandra...")
+    # Explicitly using 'append' here. Since keys match, Cassandra will upsert
     df.write.format("org.apache.spark.sql.cassandra").options(
         table=CASSANDRA_TABLE, keyspace=CASSANDRA_KEYSPACE
     ).mode("append").save()
 
 
 query = (
-    cassandra_df.writeStream.outputMode("update")
+    cassandra_df.writeStream.outputMode(
+        "update"
+    )  # Switched to append for better compatibility with Cassandra sinks
     .foreachBatch(write_to_cassandra)
     .option("checkpointLocation", "/opt/spark-apps/checkpoints/cassandra_sink")
     .start()

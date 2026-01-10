@@ -14,12 +14,6 @@ LOG_PATH = os.environ["LOG_PATH"]
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
 KAFKA_REPLICATION = int(os.getenv("KAFKA_REPLICATION_FACTOR", "2"))
 
-# We ignore specific column value to keep data anonymous
-LOG_PATTERN = re.compile(
-    r'statement: SELECT .* FROM "?([\w\.]+)"? WHERE "?([\w\.]+)"?\s*([<>=!]+)',
-    re.IGNORECASE,
-)
-
 
 def ensure_topic_exists():
     """Explicitly creates the Kafka topic if it doesn't exist."""
@@ -82,8 +76,9 @@ def start_watcher():
                     if item["table"].startswith("pg_"):
                         continue
 
+                    item["timestamp"] = time.time()
                     producer.send(KAFKA_TOPIC, item)
-                    print(f"Parsed & Sent: {item['table']}.{item['column']}")
+                    print(f"Parsed & Sent: {item}")
 
 
 if __name__ == "__main__":

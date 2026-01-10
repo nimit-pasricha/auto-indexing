@@ -1,6 +1,4 @@
-import time
-
-from pglast import ast, parse_sql
+from pglast import parse_sql, ast, enums
 
 
 def extract_query_details(sql_query):
@@ -30,7 +28,6 @@ def extract_query_details(sql_query):
                         "table": table_name.lower(),
                         "column": "__WRITE__",  # Special marker for writes
                         "operator": "WRITE",
-                        "timestamp": time.time(),
                     }
                 )
     return findings
@@ -51,53 +48,39 @@ def _walk_where(node, alias_map):
         for arg in node.args:
             results.extend(_walk_where(arg, alias_map))
     elif isinstance(node, ast.A_Expr):
-        # 1. Detect BETWEEN (Kind 1)
-        if node.kind == ast.A_Expr_Kind.AEXPR_BETWEEN:
-            col, alias = _get_col_info(node.lexpr)
-            table = alias_map.get(alias or list(alias_map.keys())[0])
-            if table and col:
-                results.append(
-                    {
-                        "table": table.lower(),
-                        "column": col.lower(),
-                        "operator": "BETWEEN",
-                    }
-                )
+        col, alias = _get_col_info(node.lexpr)
+        table = alias_map.get(
+            alias or (list(alias_map.keys())[0] if alias_map else None)
+        )
 
-        # 2. Detect IN (Kind 6)
-        elif node.kind == ast.A_Expr_Kind.AEXPR_IN:
-            col, alias = _get_col_info(node.lexpr)
-            # Check for NOT IN (The operator name will be '<>')
+        if not table or not col:
+            return results
+
+        if node.kind == enums.A_Expr_Kind.AEXPR_BETWEEN:
+            results.append(
+                {"table": table.lower(), "column": col.lower(), "operator": "BETWEEN"}
+            )
+
+        elif node.kind == enums.A_Expr_Kind.AEXPR_IN:
             op_name = "".join([n.sval for n in node.name])
-            final_op = "NOT IN" if op_name == "<>" else "IN"
+            results.append(
+                {
+                    "table": table.lower(),
+                    "column": col.lower(),
+                    "operator": "NOT IN" if op_name == "<>" else "IN",
+                }
+            )
 
-            table = alias_map.get(alias or list(alias_map.keys())[0])
-            if table and col:
-                results.append(
-                    {
-                        "table": table.lower(),
-                        "column": col.lower(),
-                        "operator": final_op,
-                    }
-                )
-
-        # 3. Detect Standard Ops (Kind 0)
-        elif node.kind == ast.A_Expr_Kind.AEXPR_OP:
-            raw_op = "".join([n.sval for n in node.name])
-            # Maps Postgres internal symbols like ~~ to 'LIKE'
-            op_map = {"~~": "LIKE", "!~~": "NOT LIKE", "<>": "!="}
-            final_op = op_map.get(raw_op, raw_op)
-
-            col, alias = _get_col_info(node.lexpr)
-            table = alias_map.get(alias or list(alias_map.keys())[0])
-            if table and col:
-                results.append(
-                    {
-                        "table": table.lower(),
-                        "column": col.lower(),
-                        "operator": final_op,
-                    }
-                )
+        else:
+            raw_op = "".join([n.sval for n in node.name if hasattr(n, "sval")])
+            op_map = {"~~": "LIKE", "!~~": "NOT LIKE", "<>": "!=", "~~*": "ILIKE"}
+            results.append(
+                {
+                    "table": table.lower(),
+                    "column": col.lower(),
+                    "operator": op_map.get(raw_op, raw_op),
+                }
+            )
     return results
 
 
