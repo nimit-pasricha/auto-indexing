@@ -61,9 +61,9 @@ queries = (
 
 
 windowed_counts = (
-    queries.withWatermark("event_time", "2 hours")
+    queries.withWatermark("event_time", "1 hour")
     .groupBy(
-        window(col("event_time"), "1 minute"),
+        window(col("event_time"), "10 minutes"),
         col("table"),
         col("column"),
         col("operator"),

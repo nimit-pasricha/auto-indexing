@@ -55,6 +55,7 @@ def setup_cassandra_schema():
             """
             )
             setup_complete = True
+            print("Initialized Cassandra Schema.")
         except Exception as e:
             print(f"Error while connecting to cassandra: {e}")
             time.sleep(5)
@@ -118,8 +119,6 @@ def manage_indices():
     pg_conn.autocommit = True
     cur = pg_conn.cursor()
 
-    print("Connected.")
-
     processed_cols = set((table, col) for table, col, operator in recent_stats.keys())
 
     # Create indexes
@@ -136,9 +135,10 @@ def manage_indices():
 
         # Skip if table is too volatile
         if write_ratio > WRITE_RATIO_THRESHOLD:
-            print(
-                f"HIGH VOLATILITY: Skipping index on {table}.{col} (Write Ratio: {write_ratio:.2%})"
-            )
+            if col != "__WRITE__":
+                print(
+                    f"HIGH VOLATILITY: Skipping index on {table}.{col} (Write Ratio: {write_ratio:.2%})"
+                )
 
             # Delete existing auto-indexes if volatility is extreme
             if write_ratio > 0.5:  # 50% writes

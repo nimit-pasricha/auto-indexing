@@ -68,7 +68,15 @@ def start_watcher():
                 time.sleep(0.1)  # Prevents high CPU usage
                 continue
 
-            if "statement: SELECT" in line:
+            if any(
+                cmd in line
+                for cmd in [
+                    "statement: SELECT",
+                    "statement: INSERT",
+                    "statement: UPDATE",
+                    "statement: DELETE",
+                ]
+            ):
                 raw_sql = line.split("statement: ", 1)[1]
                 findings = extract_query_details(raw_sql)
 
