@@ -11,7 +11,7 @@ x-kafka-common-env: &kafka-common-env
 x-cassandra-env: &cassandra-env
   CASSANDRA_CLUSTER_NAME: AutoIndexerCluster
   CASSANDRA_SEEDS: cassandra-1
-  MAX_HEAP_SIZE: 512M # to avoid laptop is running out of RAM
+  MAX_HEAP_SIZE: 512M # to avoid my laptop running out of RAM
   HEAP_NEWSIZE: 100M
 
 services:
@@ -102,9 +102,10 @@ services:
     volumes:
       - pg_logs:/var/log/postgresql:ro
     environment:
-      - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092
-      - LOG_PATH=/var/log/postgresql/postgresql.log
-      - KAFKA_REPLICATION_FACTOR=2
+      - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092       # Required. Comma separated list of kafka brokers, used for bootstrap servers.
+      - LOG_PATH=/var/log/postgresql/postgresql.log   # Required. Absolute path to the postgres log file inside the container.
+      - KAFKA_TOPIC=query-logs                        # Optional. Default: query-logs. The Kafka topic to produce query logs to.
+      - KAFKA_REPLICATION_FACTOR=2                    # Optional. Default: 2. Replication factor for the Kafka topic if it needs to be created.
 
   actuator:
     image: auto-indexing-actuator:latest
@@ -114,12 +115,21 @@ services:
       - cassandra-2
       - postgres
     environment:
-      - DB_HOST=postgres
-      - DB_NAME=testdb
-      - DB_USER=admin
-      - DB_PASS=password
-      - CASSANDRA_HOSTS=cassandra-1,cassandra-2
-      - CASSANDRA_REPLICATION_FACTOR=2
+      - DB_HOST=postgres                              # Required. Hostname of the Postgres database.
+      - DB_NAME=testdb                                # Required. Name of the Postgres database.
+      - DB_USER=admin                                 # Required. Username for the Postgres database.
+      - DB_PASS=password                              # Required. Password for the Postgres database.
+      - CASSANDRA_HOSTS=cassandra-1,cassandra-2       # Required. Comma separated list of Cassandra hosts.
+      - DB_PORT=5432                                  # Optional. Default: 5432. Port of the Postgres database.
+      - CASSANDRA_KEYSPACE=index_optimizer            # Optional. Default: index_optimizer. Cassandra keyspace to use.
+      - CASSANDRA_REPLICATION_FACTOR=2                # Optional. Default: 2. Replication factor for the Cassandra keyspace.
+      - CREATE_THRESHOLD=50                           # Optional. Default: 50. Minimum query count required to trigger index creation.
+      - DELETE_THRESHOLD=5                            # Optional. Default: 5. Maximum query count to consider an index for deletion.
+      - LOOKBACK_CREATE=30                            # Optional. Default: 30. Time window in minutes to look back for index creation statistics.
+      - LOOKBACK_DELETE=120                           # Optional. Default: 120. Time window in minutes to look back for index deletion statistics.
+      - WRITE_RATIO_THRESHOLD=0.2                     # Optional. Default: 0.2. Max ratio of writes to reads allowed before skipping index creation on a column.
+      - TABLE_SIZE_THRESHOLD=10                       # Optional. Default: 10. Minimum number of pages a table must have to consider indexing.
+      - CARDINALITY_RATIO_THRESHOLD=0.05              # Optional. Default: 0.05. Minimum ratio of distinct values to total rows required for indexing.
 
   spark-stream:
     image: auto-indexing-spark-stream:latest
@@ -130,9 +140,14 @@ services:
       - kafka-1
       - spark-master
     environment:
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092
-      - CASSANDRA_HOSTS=cassandra-1,cassandra-2
+      - SPARK_MASTER_URL=spark://spark-master:7077    # Required. URL of the Spark master.
+      - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092       # Required. Comma separated list of Kafka brokers.
+      - CASSANDRA_HOSTS=cassandra-1,cassandra-2       # Required. Comma separated list of Cassandra hosts.
+      - KAFKA_TOPIC=query-logs                        # Optional. Default: query-logs. Kafka topic to consume query logs from.
+      - CASSANDRA_KEYSPACE=index_optimizer            # Optional. Default: index_optimizer. Cassandra keyspace to write stats to.
+      - CASSANDRA_TABLE=query_stats                   # Optional. Default: query_stats. Cassandra table to write stats to.
+      - SPARK_WINDOW_SIZE=10 minutes                  # Optional. Default: 10 minutes. The size of the tumbling window for query aggregation.
+      - SPARK_WATERMARK_SIZE=1 hour                   # Optional. Default: 1 hour. The watermark duration for handling late data.
     volumes:
       - spark_checkpoints:/opt/spark-apps/checkpoints
 
