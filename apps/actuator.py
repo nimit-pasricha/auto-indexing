@@ -10,16 +10,19 @@ DB_HOST = os.environ["DB_HOST"]
 DB_NAME = os.environ["DB_NAME"]
 DB_USER = os.environ["DB_USER"]
 DB_PASS = os.environ["DB_PASS"]
-CASSANDRA_HOSTS = os.environ["CASSANDRA_HOSTS"].split(",")
-
 DB_PORT = os.getenv("DB_PORT", "5432")
+
+CASSANDRA_HOSTS = os.environ["CASSANDRA_HOSTS"].split(",")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 CASSANDRA_REPLICATION = int(os.getenv("CASSANDRA_REPLICATION_FACTOR", "2"))
+
 CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", "50"))
 DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", "5"))
 LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", "30"))
 LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", "120"))
-WRITE_RATIO_THRESHOLD = float(os.getenv("WRITE_RATIO_THRESHOLD", "0.2"))
+WRITE_RATIO_THRESHOLD = float(os.getenv("WRITE_RATIO_THRESHOLD", "0.20"))
+TABLE_SIZE_THRESHOLD = int(os.getenv("TABLE_SIZE_THRESHOLD", "10"))
+CARDINALITY_RATIO_THRESHOLD = float(os.getenv("CARDINALITY_RATIO_THRESHOLD", "0.05"))
 
 PG_DSN = (
     f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
@@ -77,19 +80,19 @@ def is_cardinality_too_low(cur, table, col):
     # Force Postgres to update its stats before we check
     cur.execute(f"ANALYZE {table}")
 
-    cur.execute(
-        f"""
-        SELECT n_distinct 
-        FROM pg_stats 
-        WHERE tablename = '{table}' AND attname = '{col}'
-    """
-    )
+    cur.execute(f"""
+        SELECT n_distinct, reltuples 
+        FROM pg_stats s
+        JOIN pg_class c ON s.tablename = c.relname
+        WHERE s.tablename = '{table}' AND s.attname = '{col}'
+    """)
     res = cur.fetchone()
 
     if not res or res[0] == 0:
-        return False  # Not enough data yet to decide, assume it's okay
+        return False # No data yet, don't block
 
     n_distinct = res[0]
+    total_rows = res[1]
 
     """
     n_distinct: 
@@ -97,18 +100,14 @@ def is_cardinality_too_low(cur, table, col):
     - If < 0, it's the ratio (e.g., -0.1 is 10%).
     """
 
-    # THRESHOLD LOGIC:
-    # If absolute distinct values < 10 (like Gender, StatusCodes)
-    # OR if distinct ratio is less than 5% (like Country in a huge table)
-    if (n_distinct > 0 and n_distinct < 10) or (
-        n_distinct < 0 and abs(n_distinct) < 0.05
-    ):
+    actual_ratio = abs(n_distinct) if n_distinct < 0 else (n_distinct / total_rows if total_rows > 0 else 0)
+    if actual_ratio < CARDINALITY_RATIO_THRESHOLD:
         return True
 
     return False
 
 
-def is_table_too_small(cur, table, page_threshold=10):
+def is_table_too_small(cur, table, page_threshold=TABLE_SIZE_THRESHOLD):
     """
     Checks if a table is too small to benefit from indexing.
     relpages: Number of pages the table takes on disk.

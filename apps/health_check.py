@@ -1,9 +1,17 @@
+import os
 import time
 
 
-def wait_for_postgres(host, name, user, password, port, max_retries=30, delay=2):
+def get_env_int(key, default):
+    return int(os.getenv(key, default))
+
+
+def wait_for_postgres(host, name, user, password, port, max_retries=None, delay=None):
     """Wait for PostgreSQL to be ready."""
     import psycopg2
+
+    max_retries = max_retries or get_env_int("HEALTH_CHECK_RETRIES", 30)
+    delay = delay or get_env_int("HEALTH_CHECK_DELAY", 2)
 
     for attempt in range(max_retries):
         try:
@@ -22,10 +30,13 @@ def wait_for_postgres(host, name, user, password, port, max_retries=30, delay=2)
             time.sleep(delay)
 
 
-def wait_for_cassandra(hosts, max_retries=30, delay=5):
+def wait_for_cassandra(hosts, max_retries=None, delay=None):
     """Wait for Cassandra to be ready."""
     from cassandra.cluster import Cluster
 
+    max_retries = max_retries or get_env_int("HEALTH_CHECK_RETRIES", 30)
+    delay = delay or get_env_int("HEALTH_CHECK_DELAY", 5)
+    
     for attempt in range(max_retries):
         cluster = None
         try:
@@ -44,10 +55,13 @@ def wait_for_cassandra(hosts, max_retries=30, delay=5):
             time.sleep(delay)
 
 
-def wait_for_kafka(brokers, max_retries=30, delay=2):
+def wait_for_kafka(brokers, max_retries=None, delay=None):
     """Wait for Kafka to be ready."""
     from kafka import KafkaAdminClient
     from kafka.errors import NoBrokersAvailable
+
+    max_retries = max_retries or get_env_int("HEALTH_CHECK_RETRIES", 30)
+    delay = delay or get_env_int("HEALTH_CHECK_DELAY", 2)
 
     for attempt in range(max_retries):
         try:

@@ -11,6 +11,8 @@ SPARK_MASTER_URL = os.environ["SPARK_MASTER_URL"]
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 CASSANDRA_TABLE = os.getenv("CASSANDRA_TABLE", "query_stats")
+WINDOW_SIZE = os.getenv("SPARK_WINDOW_SIZE", "10 minutes")
+WATERMARK_SIZE = os.getenv("SPARK_WATERMARK_SIZE", "1 hour")
 
 # Check service availability before proceeding
 if not wait_for_kafka(KAFKA_BROKERS.split(",")):
@@ -61,9 +63,9 @@ queries = (
 
 
 windowed_counts = (
-    queries.withWatermark("event_time", "1 hour")
+    queries.withWatermark("event_time", WATERMARK_SIZE)
     .groupBy(
-        window(col("event_time"), "10 minutes"),
+        window(col("event_time"), WINDOW_SIZE),
         col("table"),
         col("column"),
         col("operator"),
