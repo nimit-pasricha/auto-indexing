@@ -1,6 +1,5 @@
 import json
 import os
-import re
 import time
 
 from health_check import wait_for_kafka

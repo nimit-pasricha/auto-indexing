@@ -1,4 +1,4 @@
-from pglast import parse_sql, ast, enums
+from pglast import ast, enums, parse_sql
 
 
 def extract_query_details(sql_query):

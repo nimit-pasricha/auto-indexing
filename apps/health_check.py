@@ -36,7 +36,7 @@ def wait_for_cassandra(hosts, max_retries=None, delay=None):
 
     max_retries = max_retries or get_env_int("HEALTH_CHECK_RETRIES", 30)
     delay = delay or get_env_int("HEALTH_CHECK_DELAY", 5)
-    
+
     for attempt in range(max_retries):
         cluster = None
         try:

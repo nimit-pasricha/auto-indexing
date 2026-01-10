@@ -80,16 +80,18 @@ def is_cardinality_too_low(cur, table, col):
     # Force Postgres to update its stats before we check
     cur.execute(f"ANALYZE {table}")
 
-    cur.execute(f"""
+    cur.execute(
+        f"""
         SELECT n_distinct, reltuples 
         FROM pg_stats s
         JOIN pg_class c ON s.tablename = c.relname
         WHERE s.tablename = '{table}' AND s.attname = '{col}'
-    """)
+    """
+    )
     res = cur.fetchone()
 
     if not res or res[0] == 0:
-        return False # No data yet, don't block
+        return False  # No data yet, don't block
 
     n_distinct = res[0]
     total_rows = res[1]
@@ -100,7 +102,11 @@ def is_cardinality_too_low(cur, table, col):
     - If < 0, it's the ratio (e.g., -0.1 is 10%).
     """
 
-    actual_ratio = abs(n_distinct) if n_distinct < 0 else (n_distinct / total_rows if total_rows > 0 else 0)
+    actual_ratio = (
+        abs(n_distinct)
+        if n_distinct < 0
+        else (n_distinct / total_rows if total_rows > 0 else 0)
+    )
     if actual_ratio < CARDINALITY_RATIO_THRESHOLD:
         return True
 
