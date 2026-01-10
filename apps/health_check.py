@@ -30,13 +30,13 @@ def wait_for_cassandra(hosts, max_retries=30, delay=5):
             cluster = Cluster(hosts)
             session = cluster.connect()
             cluster.shutdown()
-            print(f"✓ Cassandra is ready")
+            print(f"Cassandra is ready")
             return True
         except Exception as e:
             if cluster:
                 cluster.shutdown()
             if attempt == max_retries - 1:
-                print(f"✗ Cassandra failed after {max_retries} attempts: {e}")
+                print(f"Cassandra failed after {max_retries} attempts: {e}")
                 return False
             print(f"Waiting for Cassandra... (Attempt {attempt + 1}/{max_retries})")
             time.sleep(delay)
@@ -51,16 +51,16 @@ def wait_for_kafka(brokers, max_retries=30, delay=2):
         try:
             admin_client = KafkaAdminClient(bootstrap_servers=brokers)
             admin_client.close()
-            print(f"✓ Kafka is ready")
+            print(f"Kafka is ready")
             return True
         except NoBrokersAvailable:
             if attempt == max_retries - 1:
-                print(f"✗ Kafka failed after {max_retries} attempts")
+                print(f"Kafka failed after {max_retries} attempts")
                 return False
             print(f"Waiting for Kafka... (Attempt {attempt + 1}/{max_retries})")
             time.sleep(delay)
         except Exception as e:
             if attempt == max_retries - 1:
-                print(f"✗ Kafka failed after {max_retries} attempts: {e}")
+                print(f"Kafka failed after {max_retries} attempts: {e}")
                 return False
             time.sleep(delay)
