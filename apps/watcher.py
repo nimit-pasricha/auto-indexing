@@ -83,8 +83,6 @@ def start_watcher():
                     if item["table"].startswith("pg_"):
                         continue
 
-                    # Spark will use this timestamp for Watermarking
-                    item["timestamp"] = time.time()
                     producer.send(KAFKA_TOPIC, item)
                     print(f"Parsed & Sent: {item['table']}.{item['column']}")
 

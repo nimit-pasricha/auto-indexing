@@ -20,6 +20,7 @@ CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", "50"))
 DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", "5"))
 LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", "30"))
 LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", "120"))
+WRITE_RATIO_THRESHOLD = float(os.getenv("WRITE_RATIO_THRESHOLD", "0.2"))
 
 PG_DSN = (
     f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
@@ -130,6 +131,18 @@ def manage_indices():
             if t == table and c == col
         }
         total_recent = sum(all_ops.values())
+
+        table_writes = long_term_stats.get((table, "__WRITE__", "WRITE"), 0)
+        write_ratio = table_writes / total_recent if total_recent > 0 else 0
+
+        # Skip if table is too volatile
+        if write_ratio > WRITE_RATIO_THRESHOLD:
+            print(f"HIGH VOLATILITY: Skipping index on {table}.{col} (Write Ratio: {write_ratio:.2%})")
+            
+            # Delete existing auto-indexes if volatility is extreme
+            if write_ratio > 0.5: # 50% writes
+                 cur.execute(f"DROP INDEX CONCURRENTLY IF EXISTS auto_idx_btree_{table}_{col}")
+            continue
 
         if total_recent >= CREATE_THRESHOLD:
             if is_cardinality_too_low(cur, table, col):
