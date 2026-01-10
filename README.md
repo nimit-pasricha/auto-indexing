@@ -2,8 +2,8 @@
 
 ## TODO
 
-- [ ] Delete idx if lots of inserts/updates
-- [ ] Use EXPLAIN to parse column?
 - [ ] graph showing performance
-- [ ] Write default values of all environ vars in docker-compose for documentation purposes.
+- [ ] docstrings
+- [ ] github action to push docker image to dockerhub
+- [ ] replace compose yml with dockerhub image
 - [ ] PDF
