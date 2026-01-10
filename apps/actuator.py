@@ -57,7 +57,7 @@ def setup_cassandra_schema():
             setup_complete = True
         except Exception as e:
             print(f"Error while connecting to cassandra: {e}")
-            time.sleep(0.1)
+            time.sleep(5)
     cluster.shutdown()
 
 
@@ -124,8 +124,6 @@ def manage_indices():
 
     # Create indexes
     for table, col in processed_cols:
-
-        # Compute total count for (table, col) pairs across all operators.
         all_ops = {
             o: count
             for (t, c, o), count in recent_stats.items()
@@ -138,10 +136,24 @@ def manage_indices():
                 print(f"SKIPPING: {table}.{col} has too low cardinality for an index.")
                 continue
 
-            has_range_query = any(
-                op in [">", "<", ">=", "<=", "!="] for op in all_ops.keys()
+            range_ops = [
+                ">",
+                "<",
+                ">=",
+                "<=",
+                "!=",
+                "BETWEEN",
+                "LIKE",
+                "NOT LIKE",
+                "ILIKE",
+            ]
+            has_range_query = any(op in range_ops for op in all_ops.keys())
+
+            target_type = (
+                "btree"
+                if (has_range_query or "IN" in all_ops or "NOT IN" in all_ops)
+                else "hash"
             )
-            target_type = "btree" if has_range_query else "hash"
 
             # auto_idx_ prefix to differentiate auto generated and user generated indexes
             target_idx = f"auto_idx_{target_type}_{table}_{col}"
@@ -207,7 +219,7 @@ if __name__ == "__main__":
         exit(1)
     if not wait_for_postgres(DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT):
         exit(1)
-    
+
     setup_cassandra_schema()
     while True:
         try:

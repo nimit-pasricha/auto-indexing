@@ -6,6 +6,7 @@ import time
 from kafka import KafkaAdminClient, KafkaProducer
 from kafka.admin import NewTopic
 from kafka.errors import NoBrokersAvailable, TopicAlreadyExistsError
+from sql_parser import extract_query_details
 
 from health_check import wait_for_kafka
 
@@ -74,25 +75,18 @@ def start_watcher():
                 time.sleep(0.1)  # Prevents high CPU usage
                 continue
 
-            match = LOG_PATTERN.search(line)
-            if match:
-                table, col, op = match.groups()
+            if "statement: SELECT" in line:
+                raw_sql = line.split("statement: ", 1)[1]
+                findings = extract_query_details(raw_sql)
 
-                if (
-                    table.lower().startswith("pg_")
-                    or table.lower() == "information_schema"
-                ):
-                    continue
+                for item in findings:
+                    if item["table"].startswith("pg_"):
+                        continue
 
-                payload = {
-                    "table": table.lower(),
-                    "column": col.lower(),
-                    "operator": op,
-                    "timestamp": time.time(),
-                }
-
-                producer.send(KAFKA_TOPIC, payload)
-                print(f"Sent: {table}.{col} {op} at {payload['timestamp']}")
+                    # Spark will use this timestamp for Watermarking
+                    item["timestamp"] = time.time()
+                    producer.send(KAFKA_TOPIC, item)
+                    print(f"Parsed & Sent: {item['table']}.{item['column']}")
 
 
 if __name__ == "__main__":

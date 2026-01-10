@@ -2,9 +2,10 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir kafka-python
+RUN pip install --no-cache-dir kafka-python pglast
 
 COPY ./apps/watcher.py .
+COPY ./apps/sql_parser.py .
 COPY ./apps/health_check.py .
 
 ENV PYTHONUNBUFFERED=1
