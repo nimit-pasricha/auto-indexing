@@ -3,12 +3,11 @@ import os
 import re
 import time
 
+from health_check import wait_for_kafka
 from kafka import KafkaAdminClient, KafkaProducer
 from kafka.admin import NewTopic
 from kafka.errors import NoBrokersAvailable, TopicAlreadyExistsError
 from sql_parser import extract_query_details
-
-from health_check import wait_for_kafka
 
 KAFKA_BROKERS = os.environ["KAFKA_BROKERS"].split(",")
 LOG_PATH = os.environ["LOG_PATH"]

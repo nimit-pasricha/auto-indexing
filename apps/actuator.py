@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 
 import psycopg2
 from cassandra.cluster import Cluster
-
 from health_check import wait_for_cassandra, wait_for_postgres
 
 DB_HOST = os.environ["DB_HOST"]
@@ -156,7 +155,7 @@ def manage_indices():
                 indexes_to_drop = cur.fetchall()
 
                 for (idx_name,) in indexes_to_drop:
-                    print(f"Table {table} is too write-heavy. Removing {idx_name}")
+                    print(f"Table {table} is way too write-heavy. Removing {idx_name}")
                     cur.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {idx_name}")
             continue
 

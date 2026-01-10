@@ -1,10 +1,9 @@
 import os
 
+from health_check import wait_for_cassandra, wait_for_kafka
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, from_json, window
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
-
-from health_check import wait_for_kafka, wait_for_cassandra
 
 KAFKA_BROKERS = os.environ["KAFKA_BROKERS"]
 CASSANDRA_HOSTS = os.environ["CASSANDRA_HOSTS"]

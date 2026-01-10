@@ -4,10 +4,12 @@ import time
 def wait_for_postgres(host, name, user, password, port, max_retries=30, delay=2):
     """Wait for PostgreSQL to be ready."""
     import psycopg2
-    
+
     for attempt in range(max_retries):
         try:
-            dsn = f"host={host} dbname={name} user={user} password={password} port={port}"
+            dsn = (
+                f"host={host} dbname={name} user={user} password={password} port={port}"
+            )
             conn = psycopg2.connect(dsn)
             conn.close()
             print(f"PostgreSQL is ready")
@@ -23,7 +25,7 @@ def wait_for_postgres(host, name, user, password, port, max_retries=30, delay=2)
 def wait_for_cassandra(hosts, max_retries=30, delay=5):
     """Wait for Cassandra to be ready."""
     from cassandra.cluster import Cluster
-    
+
     for attempt in range(max_retries):
         cluster = None
         try:
@@ -46,7 +48,7 @@ def wait_for_kafka(brokers, max_retries=30, delay=2):
     """Wait for Kafka to be ready."""
     from kafka import KafkaAdminClient
     from kafka.errors import NoBrokersAvailable
-    
+
     for attempt in range(max_retries):
         try:
             admin_client = KafkaAdminClient(bootstrap_servers=brokers)
