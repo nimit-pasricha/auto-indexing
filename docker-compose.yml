@@ -90,9 +90,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   watcher:
-    build:
-      context: .
-      dockerfile: Dockerfile.watcher
+    image: auto-indexing-watcher:latest
     container_name: watcher
     depends_on:
       - kafka-1
@@ -105,9 +103,7 @@ services:
       - KAFKA_REPLICATION_FACTOR=2
 
   actuator:
-    build:
-      context: .
-      dockerfile: Dockerfile.actuator
+    image: auto-indexing-actuator:latest
     container_name: actuator
     depends_on:
       - cassandra-1
@@ -122,9 +118,7 @@ services:
       - CASSANDRA_REPLICATION_FACTOR=2
 
   spark-stream:
-    build:
-      context: .
-      dockerfile: Dockerfile.spark
+    image: auto-indexing-spark-stream:latest
     container_name: spark-submit
     depends_on:
       - cassandra-1

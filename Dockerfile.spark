@@ -3,7 +3,7 @@ FROM apache/spark:3.5.0-python3
 USER root
 WORKDIR /opt/spark-apps
 
-RUN pip install --no-cache-dir psycopg2-binary cassandra-driver kafka-python
+RUN pip install --no-cache-dir cassandra-driver kafka-python
 
 RUN mkdir -p /opt/spark-apps/checkpoints && chmod -R 777 /opt/spark-apps/checkpoints
 
