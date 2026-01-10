@@ -1,10 +1,4 @@
-# TODO: create environment vars with all defaults
-
-x-kafka-common: &kafka-common
-  image: apache/kafka:4.1.1
-  user: root
-
-x-kafka-common-environment: &kafka-common-environment
+x-kafka-common-env: &kafka-common-env
   KAFKA_PROCESS_ROLES: broker,controller
   KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
   KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
@@ -14,63 +8,66 @@ x-kafka-common-environment: &kafka-common-environment
   KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
   KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
 
-x-cassandra-common: &cassandra-common
-  image: cassandra:5.0.6
-  environment:
-    - CASSANDRA_CLUSTER_NAME=AutoIndexerCluster
-    - CASSANDRA_SEEDS=cassandra-1
-
-x-spark-common: &spark-common
-  image: apache/spark:3.5.0-python3
-  environment:
-    - SPARK_MASTER=spark://spark-master:7077
+x-cassandra-env: &cassandra-env
+  CASSANDRA_CLUSTER_NAME: AutoIndexerCluster
+  CASSANDRA_SEEDS: cassandra-1
+  MAX_HEAP_SIZE: 512M # to avoid laptop is running out of RAM
+  HEAP_NEWSIZE: 100M
 
 services:
   kafka-1:
-    <<: *kafka-common
+    image: apache/kafka:4.1.1
+    user: root
     container_name: kafka-1
     environment:
-      <<: *kafka-common-environment
+      <<: *kafka-common-env
       KAFKA_NODE_ID: 1
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
     volumes:
       - kafka1_data:/tmp/kafka-logs
 
   kafka-2:
-    <<: *kafka-common
+    image: apache/kafka:4.1.1
+    user: root
     container_name: kafka-2
     environment:
-      <<: *kafka-common-environment
+      <<: *kafka-common-env
       KAFKA_NODE_ID: 2
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
     volumes:
       - kafka2_data:/tmp/kafka-logs
 
   cassandra-1:
-    <<: *cassandra-common
+    image: cassandra:5.0.6
     container_name: cassandra-1
+    environment:
+      <<: *cassandra-env
     volumes:
       - cass1_data:/var/lib/cassandra
 
   cassandra-2:
-    <<: *cassandra-common
+    image: cassandra:5.0.6
     container_name: cassandra-2
-    depends_on:
-      - cassandra-1
+    environment:
+      <<: *cassandra-env
     volumes:
       - cass2_data:/var/lib/cassandra
+    depends_on:
+      - cassandra-1
 
   spark-master:
-    <<: *spark-common
+    image: apache/spark:3.5.0-python3
     container_name: spark-master
     ports:
-      - "8080:8080" # Web UI
+      - "8080:8080"
       - "7077:7077"
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
 
   spark-worker-1:
-    <<: *spark-common
+    image: apache/spark:3.5.0-python3
     container_name: spark-worker-1
+    environment:
+    - SPARK_MASTER=spark://spark-master:7077
     depends_on:
       - spark-master
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
@@ -89,36 +86,51 @@ services:
       -c log_directory=/var/log/postgresql 
       -c log_filename=postgresql.log
     volumes:
-      - pg_logs:/var/log/postgresql # Shared with Watcher
-      - postgres_data:/var/lib/postgresql/data # Persistent User Dat
+      - pg_logs:/var/log/postgresql
+      - postgres_data:/var/lib/postgresql/data
 
   watcher:
-    image: auto-index-watcher:1.0
+    build:
+      context: .
+      dockerfile: Dockerfile.watcher
     container_name: watcher
+    depends_on:
+      - kafka-1
+      - postgres
     volumes:
-      - pg_logs:/var/log/postgresql:ro # Only needs the logs
+      - pg_logs:/var/log/postgresql:ro
     environment:
       - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092
       - LOG_PATH=/var/log/postgresql/postgresql.log
+      - KAFKA_REPLICATION_FACTOR=2
 
   actuator:
-    image: auto-index-actuator:1.0
+    build:
+      context: .
+      dockerfile: Dockerfile.actuator
     container_name: actuator
+    depends_on:
+      - cassandra-1
+      - cassandra-2
+      - postgres
     environment:
       - DB_HOST=postgres
       - DB_NAME=testdb
       - DB_USER=admin
       - DB_PASS=password
       - CASSANDRA_HOSTS=cassandra-1,cassandra-2
+      - CASSANDRA_REPLICATION_FACTOR=2
 
   spark-stream:
-    image: auto-index-spark-stream:1.0
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
     container_name: spark-submit
     depends_on:
-      - spark-master
-      - spark-worker-1
-      - kafka-1
       - cassandra-1
+      - cassandra-2
+      - kafka-1
+      - spark-master
     environment:
       - SPARK_MASTER_URL=spark://spark-master:7077
       - KAFKA_BROKERS=kafka-1:9092,kafka-2:9092

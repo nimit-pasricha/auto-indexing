@@ -7,6 +7,8 @@ from kafka import KafkaAdminClient, KafkaProducer
 from kafka.admin import NewTopic
 from kafka.errors import NoBrokersAvailable, TopicAlreadyExistsError
 
+from health_check import wait_for_kafka
+
 KAFKA_BROKERS = os.environ["KAFKA_BROKERS"].split(",")
 LOG_PATH = os.environ["LOG_PATH"]
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
@@ -38,24 +40,18 @@ def ensure_topic_exists():
         admin_client.close()
 
 
-def get_producer(retries=5, delay=5):
-    for i in range(retries):
-        try:
-            print(f"Attempting to connect to Kafka (Attempt {i+1}/{retries})...")
-            producer = KafkaProducer(
-                bootstrap_servers=KAFKA_BROKERS,
-                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-                # Built-in retries for individual message sends
-                retries=5,
-                retry_backoff_ms=1000,
-            )
-            ensure_topic_exists()
-            print("Connected to Kafka!")
-            return producer
-        except NoBrokersAvailable:
-            print(f"Kafka not ready. Retrying in {delay}s...")
-            time.sleep(delay)
-    raise Exception("Failed to connect to Kafka after multiple retries.")
+def get_producer():
+    """Create a Kafka producer. Service availability is already checked."""
+    producer = KafkaProducer(
+        bootstrap_servers=KAFKA_BROKERS,
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        # Built-in retries for individual message sends
+        retries=5,
+        retry_backoff_ms=1000,
+    )
+    ensure_topic_exists()
+    print("Connected to Kafka!")
+    return producer
 
 
 def start_watcher():
@@ -100,4 +96,7 @@ def start_watcher():
 
 
 if __name__ == "__main__":
+    # Check service availability before proceeding
+    if not wait_for_kafka(KAFKA_BROKERS):
+        exit(1)
     start_watcher()

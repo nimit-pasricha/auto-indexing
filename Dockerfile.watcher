@@ -5,6 +5,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir kafka-python
 
 COPY ./apps/watcher.py .
+COPY ./apps/health_check.py .
 
 ENV PYTHONUNBUFFERED=1
 

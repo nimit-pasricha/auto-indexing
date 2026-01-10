@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 import psycopg2
 from cassandra.cluster import Cluster
 
+from health_check import wait_for_cassandra, wait_for_postgres
+
 DB_HOST = os.environ["DB_HOST"]
 DB_NAME = os.environ["DB_NAME"]
 DB_USER = os.environ["DB_USER"]
@@ -19,7 +21,10 @@ DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", "5"))
 LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", "30"))
 LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", "120"))
 
-PG_DSN = f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
+PG_DSN = (
+    f"host={DB_HOST} dbname={DB_NAME} user={DB_USER} password={DB_PASS} port={DB_PORT}"
+)
+
 
 def setup_cassandra_schema():
     """Ensures the Cassandra environment is ready for Spark and the Actuator."""
@@ -29,12 +34,15 @@ def setup_cassandra_schema():
             cluster = Cluster(CASSANDRA_HOSTS)
             session = cluster.connect()
             print("Initializing Cassandra Schema...")
-            session.execute(f"""
+            session.execute(
+                f"""
                 CREATE KEYSPACE IF NOT EXISTS {CASSANDRA_KEYSPACE} 
-                WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}};
-            """)
+                WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': {CASSANDRA_REPLICATION}}};
+                """
+            )
             session.execute(f"USE {CASSANDRA_KEYSPACE};")
-            session.execute("""
+            session.execute(
+                """
                 CREATE TABLE IF NOT EXISTS query_stats (
                     table_name text,
                     window_start timestamp,
@@ -44,7 +52,8 @@ def setup_cassandra_schema():
                     query_count int,
                     PRIMARY KEY ((table_name), window_start, window_end, column_name, operator)
                 ) WITH default_time_to_live = 86400;
-            """)
+            """
+            )
             setup_complete = True
         except Exception as e:
             print(f"Error while connecting to cassandra: {e}")
@@ -193,6 +202,12 @@ if __name__ == "__main__":
     print(
         f"Actuator active. Creation: {CREATE_THRESHOLD}q/{LOOKBACK_CREATE}m | Cleanup: {DELETE_THRESHOLD}q/{LOOKBACK_DELETE}m"
     )
+    # Check service availability before proceeding
+    if not wait_for_cassandra(CASSANDRA_HOSTS):
+        exit(1)
+    if not wait_for_postgres(DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT):
+        exit(1)
+    
     setup_cassandra_schema()
     while True:
         try:

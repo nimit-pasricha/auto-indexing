@@ -4,12 +4,20 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, count, from_json, window
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
+from health_check import wait_for_kafka, wait_for_cassandra
+
 KAFKA_BROKERS = os.environ["KAFKA_BROKERS"]
 CASSANDRA_HOSTS = os.environ["CASSANDRA_HOSTS"]
 SPARK_MASTER_URL = os.environ["SPARK_MASTER_URL"]
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "query-logs")
 CASSANDRA_KEYSPACE = os.getenv("CASSANDRA_KEYSPACE", "index_optimizer")
 CASSANDRA_TABLE = os.getenv("CASSANDRA_TABLE", "query_stats")
+
+# Check service availability before proceeding
+if not wait_for_kafka(KAFKA_BROKERS.split(",")):
+    exit(1)
+if not wait_for_cassandra(CASSANDRA_HOSTS.split(",")):
+    exit(1)
 
 spark = (
     SparkSession.builder.appName("IndexOptimizer")
