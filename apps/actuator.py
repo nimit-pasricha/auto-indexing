@@ -137,11 +137,27 @@ def manage_indices():
 
         # Skip if table is too volatile
         if write_ratio > WRITE_RATIO_THRESHOLD:
-            print(f"HIGH VOLATILITY: Skipping index on {table}.{col} (Write Ratio: {write_ratio:.2%})")
-            
+            print(
+                f"HIGH VOLATILITY: Skipping index on {table}.{col} (Write Ratio: {write_ratio:.2%})"
+            )
+
             # Delete existing auto-indexes if volatility is extreme
-            if write_ratio > 0.5: # 50% writes
-                 cur.execute(f"DROP INDEX CONCURRENTLY IF EXISTS auto_idx_btree_{table}_{col}")
+            if write_ratio > 0.5:  # 50% writes
+                pattern = f"auto_idx_%_{table}_{col}"
+                cur.execute(
+                    """
+                    SELECT indexname 
+                    FROM pg_indexes 
+                    WHERE tablename = %s AND indexname LIKE %s
+                """,
+                    (table, pattern),
+                )
+
+                indexes_to_drop = cur.fetchall()
+
+                for (idx_name,) in indexes_to_drop:
+                    print(f"Table {table} is too write-heavy. Removing {idx_name}")
+                    cur.execute(f"DROP INDEX CONCURRENTLY IF EXISTS {idx_name}")
             continue
 
         if total_recent >= CREATE_THRESHOLD:
