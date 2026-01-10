@@ -108,6 +108,18 @@ def is_cardinality_too_low(cur, table, col):
     return False
 
 
+def is_table_too_small(cur, table, page_threshold=10):
+    """
+    Checks if a table is too small to benefit from indexing.
+    relpages: Number of pages the table takes on disk.
+    """
+    cur.execute(f"SELECT relpages FROM pg_class WHERE relname = '{table}'")
+    res = cur.fetchone()
+    if res and res[0] < page_threshold:
+        return True
+    return False
+
+
 def manage_indices():
     cluster = Cluster(CASSANDRA_HOSTS)
     session = cluster.connect("index_optimizer")
@@ -160,6 +172,10 @@ def manage_indices():
             continue
 
         if total_recent >= CREATE_THRESHOLD:
+            if is_table_too_small(cur, table):
+                print(f"SKIPPING: {table} is too small for indexing to be effective.")
+                continue
+
             if is_cardinality_too_low(cur, table, col):
                 print(f"SKIPPING: {table}.{col} has too low cardinality for an index.")
                 continue
