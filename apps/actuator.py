@@ -20,7 +20,7 @@ CREATE_THRESHOLD = int(os.getenv("CREATE_THRESHOLD", "50"))
 DELETE_THRESHOLD = int(os.getenv("DELETE_THRESHOLD", "5"))
 LOOKBACK_CREATE = int(os.getenv("LOOKBACK_CREATE", "30"))
 LOOKBACK_DELETE = int(os.getenv("LOOKBACK_DELETE", "120"))
-WRITE_RATIO_THRESHOLD = float(os.getenv("WRITE_RATIO_THRESHOLD", "0.20"))
+WRITE_RATIO_THRESHOLD = float(os.getenv("WRITE_RATIO_THRESHOLD", "2.0"))
 TABLE_SIZE_THRESHOLD = int(os.getenv("TABLE_SIZE_THRESHOLD", "10"))
 CARDINALITY_RATIO_THRESHOLD = float(os.getenv("CARDINALITY_RATIO_THRESHOLD", "0.05"))
 
@@ -136,7 +136,11 @@ def manage_indices():
     pg_conn.autocommit = True
     cur = pg_conn.cursor()
 
-    processed_cols = set((table, col) for table, col, operator in recent_stats.keys())
+    processed_cols = set(
+        (table, col)
+        for table, col, operator in recent_stats.keys()
+        if col != "__WRITE__"
+    )
 
     # Create indexes
     for table, col in processed_cols:

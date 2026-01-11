@@ -24,10 +24,7 @@ spark = (
     SparkSession.builder.appName("IndexOptimizer")
     .master(SPARK_MASTER_URL)
     .config("spark.cassandra.connection.host", CASSANDRA_HOSTS)
-    .config(
-        "spark.cassandra.connection.timeoutMS", "10000"
-    )  # Give time for gossip to settle
-    .config("parameter spark.cassandra.connection.reconnectionDelayMS.min", "5000")
+    .config("spark.cassandra.output.consistency.level", "ONE")
     .getOrCreate()
 )
 

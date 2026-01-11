@@ -79,6 +79,8 @@ services:
   postgres:
     image: postgres:15.15-trixie
     container_name: postgres
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=password
@@ -123,12 +125,12 @@ services:
       - DB_PORT=5432                                  # Optional. Default: 5432. Port of the Postgres database.
       - CASSANDRA_KEYSPACE=index_optimizer            # Optional. Default: index_optimizer. Cassandra keyspace to use.
       - CASSANDRA_REPLICATION_FACTOR=2                # Optional. Default: 2. Replication factor for the Cassandra keyspace.
-      - CREATE_THRESHOLD=50                           # Optional. Default: 50. Minimum query count required to trigger index creation.
+      - CREATE_THRESHOLD=40                           # Optional. Default: 50. Minimum query count required to trigger index creation.
       - DELETE_THRESHOLD=5                            # Optional. Default: 5. Maximum query count to consider an index for deletion.
-      - LOOKBACK_CREATE=30                            # Optional. Default: 30. Time window in minutes to look back for index creation statistics.
+      - LOOKBACK_CREATE=15                            # Optional. Default: 30. Time window in minutes to look back for index creation statistics.
       - LOOKBACK_DELETE=120                           # Optional. Default: 120. Time window in minutes to look back for index deletion statistics.
-      - WRITE_RATIO_THRESHOLD=0.2                     # Optional. Default: 0.2. Max ratio of writes to reads allowed before skipping index creation on a column.
-      - TABLE_SIZE_THRESHOLD=10                       # Optional. Default: 10. Minimum number of pages a table must have to consider indexing.
+      - WRITE_RATIO_THRESHOLD=4.0                     # Optional. Default: 2.0 Max ratio of writes to reads allowed before skipping index creation on a column.
+      - TABLE_SIZE_THRESHOLD=5                        # Optional. Default: 10. Minimum number of pages a table must have to consider indexing.
       - CARDINALITY_RATIO_THRESHOLD=0.05              # Optional. Default: 0.05. Minimum ratio of distinct values to total rows required for indexing.
 
   spark-stream:
@@ -146,8 +148,8 @@ services:
       - KAFKA_TOPIC=query-logs                        # Optional. Default: query-logs. Kafka topic to consume query logs from.
       - CASSANDRA_KEYSPACE=index_optimizer            # Optional. Default: index_optimizer. Cassandra keyspace to write stats to.
       - CASSANDRA_TABLE=query_stats                   # Optional. Default: query_stats. Cassandra table to write stats to.
-      - SPARK_WINDOW_SIZE=10 minutes                  # Optional. Default: 10 minutes. The size of the tumbling window for query aggregation.
-      - SPARK_WATERMARK_SIZE=1 hour                   # Optional. Default: 1 hour. The watermark duration for handling late data.
+      - SPARK_WINDOW_SIZE=1 minute                    # Optional. Default: 10 minutes. The size of the tumbling window for query aggregation.
+      - SPARK_WATERMARK_SIZE=5 minutes                # Optional. Default: 1 hour. The watermark duration for handling late data.
     volumes:
       - spark_checkpoints:/opt/spark-apps/checkpoints
 
