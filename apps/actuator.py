@@ -244,7 +244,17 @@ def manage_indices():
         # Index Naming Scheme: (auto_idx_TYPE_TABLE_COL)
         # eg parts looks like: ['auto', 'idx', 'btree', 'users', 'email']
         parts = idx_name.split("_")
-        col_name = parts[-1]
+        if len(parts) < 4:
+            continue
+            
+        type_str = parts[2] # btree or hash
+        prefix = f"auto_idx_{type_str}_{table_name}_"
+        
+        if idx_name.startswith(prefix):
+            col_name = idx_name[len(prefix):]
+        else:
+            # Fallback for unexpected naming
+            col_name = parts[-1]
 
         usage = sum(
             count
