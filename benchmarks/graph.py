@@ -52,26 +52,8 @@ def generate_full_report(window_size=30):
     plt.ylabel("Latency (ms)")
     plt.xlabel("Seconds Elapsed")
     plt.legend()
-    plt.savefig("report_1_trend_overlay.png")
+    plt.savefig("trend_overlay.png")
 
-    # GRAPH: LATENCY DISTRIBUTION
-    plt.figure(figsize=(10, 6))
-    # Combine data for distribution analysis
-    base_dist = base_reads[["latency_ms"]].copy()
-    base_dist["System"] = "Baseline"
-    opt_dist = opt_reads[["latency_ms"]].copy()
-    opt_dist["System"] = "Optimized"
-    combined = pd.concat([base_dist, opt_dist])
-
-    sns.violinplot(
-        x="System",
-        y="latency_ms",
-        data=combined,
-        palette={"Baseline": "red", "Optimized": "green"},
-    )
-    plt.title("Latency Distribution: Jitter and Tail Reduction")
-    plt.ylabel("Latency (ms)")
-    plt.savefig("report_2_distribution.png")
 
     # GRAPH: CUMULATIVE THROUGHPUT
     plt.figure(figsize=(12, 6))
@@ -91,7 +73,7 @@ def generate_full_report(window_size=30):
     plt.ylabel("Total Queries Processed")
     plt.xlabel("Seconds Elapsed")
     plt.legend()
-    plt.savefig("report_3_throughput.png")
+    plt.savefig("throughput_line.png")
 
     # GRAPH: READ/WRITE TRADE-OFF
     plt.figure(figsize=(10, 6))
@@ -115,7 +97,7 @@ def generate_full_report(window_size=30):
         palette={"Baseline": "red", "Optimized": "green"},
     )
     plt.title("The Indexing Trade-off: Read Benefit vs. Write Tax")
-    plt.savefig("report_4_tradeoff.png")
+    plt.savefig("tradeoff_bar.png")
 
     print("Report Generation Complete. Check your folder for 4 PNG files!")
 
