@@ -246,12 +246,12 @@ def manage_indices():
         parts = idx_name.split("_")
         if len(parts) < 4:
             continue
-            
-        type_str = parts[2] # btree or hash
+
+        type_str = parts[2]  # btree or hash
         prefix = f"auto_idx_{type_str}_{table_name}_"
-        
+
         if idx_name.startswith(prefix):
-            col_name = idx_name[len(prefix):]
+            col_name = idx_name[len(prefix) :]
         else:
             # Fallback for unexpected naming
             col_name = parts[-1]

@@ -41,7 +41,6 @@ def wait_for_cassandra(hosts, max_retries=None, delay=None):
         cluster = None
         try:
             cluster = Cluster(hosts)
-            session = cluster.connect()
             cluster.shutdown()
             print(f"Cassandra is ready")
             return True

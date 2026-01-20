@@ -2,6 +2,7 @@ from pglast import ast, enums, parse_sql
 
 
 def extract_query_details(sql_query):
+    testingh
     try:
         tree = parse_sql(sql_query)
     except Exception:
