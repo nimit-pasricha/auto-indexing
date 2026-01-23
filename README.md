@@ -5,7 +5,7 @@ The goal of this project is to turn a standard PostgreSQL database into a self-d
 ## How it Works
 - Monitor: A watcher tails PostgreSQL logs and parses raw SQL into structured data using pglast.
 
-- Analyze: Query logs are streamed through Kafka to Apache Spark, which identifies "hotspot" columns using windowed aggregations.
+- Analyze: Query logs are streamed through Kafka to Apache Spark, which identifies frequently queried columns using windowed aggregations.
 
 - Optimize: An autonomous Actuator reads these metrics from Cassandra and automatically creates B-Tree or Hash indexes in PostgreSQL.
 
